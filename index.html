@@ -87,6 +87,8 @@
   .match{border:1px solid rgba(16,185,129,0.35);background:rgba(16,185,129,0.08);padding:16px;border-radius:16px;margin-top:16px;line-height:1.5}
   .swipe-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:4px 0 18px}
   .swipe-head h3{margin:0;font-size:22px;font-weight:650}
+  .timer-label{display:inline-flex;align-items:center;gap:8px;font-size:14px;color:#cbd5f5;background:rgba(134,239,172,0.1);padding:8px 12px;border-radius:12px;border:1px solid rgba(134,239,172,0.35)}
+  .timer{font-variant-numeric:tabular-nums;color:#bbf7d0;font-weight:700;letter-spacing:1px}
   .hint{font-size:13px;color:#a3b2d6;line-height:1.5}
   .tag-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
   .tag{
@@ -101,39 +103,6 @@
     text-transform:uppercase;
     letter-spacing:1px;
   }
-  .profile-line{margin-top:12px;font-size:15px;line-height:1.5;color:#e2e8f0}
-  .section-label{margin-top:16px;text-transform:uppercase;font-size:12px;letter-spacing:1.4px;color:rgba(203,213,225,0.8)}
-  .loader{
-    position:fixed;
-    inset:0;
-    background:rgba(8, 15, 30, 0.72);
-    backdrop-filter:blur(10px);
-    display:none;
-    align-items:center;
-    justify-content:center;
-    flex-direction:column;
-    gap:12px;
-    z-index:1000;
-    text-align:center;
-    color:#e2e8f0;
-    padding:24px;
-  }
-  .spinner{
-    width:46px;
-    height:46px;
-    border-radius:50%;
-    border:4px solid rgba(148,163,184,0.3);
-    border-top-color:var(--acc);
-    animation:spin 0.9s linear infinite;
-  }
-  @keyframes spin{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
-  body.is-loading .btn{pointer-events:none;opacity:0.6}
-  .match-details{margin-top:12px;display:flex;flex-direction:column;gap:8px;font-size:14px;color:#d1e3ff}
-  .match-details b{font-weight:600;color:#f8fafc}
-  .match-line{display:flex;flex-direction:column;gap:4px;background:rgba(148,163,184,0.08);padding:10px 12px;border-radius:12px}
-  .match-line span{color:#9ca3af;text-transform:uppercase;letter-spacing:1px;font-size:11px;display:block;margin-bottom:2px}
-  .match-line div{color:#f8fafc;line-height:1.45}
-  .match-actions{margin-top:12px;display:flex;flex-wrap:wrap;gap:8px}
   @media (max-width:900px){
     body{padding:24px}
     .card{padding:24px;border-radius:22px}
@@ -407,19 +376,18 @@
     <div id="screen-swipe" style="display:none">
       <div class="swipe-head">
         <h3>Swipe candidates</h3>
+        <div class="timer-label">Time left <span class="timer" id="timer">10:00</span></div>
       </div>
       <div id="match-alert" class="match" style="display:none"></div>
       <div class="deck">
         <div class="profile" id="card" style="display:none">
-          <div class="muted" id="p-status">Name is hidden until you both match.</div>
-          <div id="p-country" class="tag-list" style="margin-top:12px"></div>
-          <div id="p-bg" class="profile-line"></div>
-          <div id="p-interests-wrap" style="display:none">
-            <div class="section-label">Interests</div>
-            <div class="badges" id="p-interests"></div>
-          </div>
+          <div class="muted">Candidate</div>
+          <h2 id="p-name" style="margin:6px 0 0"></h2>
+          <div id="p-campus" class="tag-list"></div>
+          <div id="p-bg" style="margin-top:6px"></div>
+          <div class="badges" id="p-interests"></div>
           <div class="hr"></div>
-          <div class="hint">Think about what you could collaborate on or ask about their journey when you match.</div>
+          <div class="hint">Icebreakers: What brought you to this field? Favourite local study spot? One fun fact?</div>
         </div>
         <div class="profile center" id="empty" style="display:none">
           <div>
@@ -440,245 +408,88 @@
   </div>
 </div>
 
-<div class="loader" id="loader" role="status" aria-live="assertive" aria-hidden="true">
-  <div class="spinner" aria-hidden="true"></div>
-  <p id="loader-text">Loading...</p>
-</div>
-
 <script>
 const API = "https://script.google.com/macros/s/AKfycbxflqP3IsvUZVC5AZbIr470JkBEXfcYTrxHkBRlpIq7AI3kUR2yQPB8tWm2W9ms03ME/exec";
 let joinCode = localStorage.getItem("joinCode") || null;
 let myProfile = null;
 let deck = [];
 let current = null;
-let loadingCount = 0;
+let timerId = null, remaining = 10*60; // 10 minutes
 
-function toggleLoader(show, message = 'Working...') {
-  const loader = document.getElementById('loader');
-  if(!loader) return;
-  const text = document.getElementById('loader-text');
-  if(show){
-    loadingCount++;
-    if(message && text) text.textContent = message;
-    loader.style.display = 'flex';
-    loader.setAttribute('aria-hidden','false');
-    document.body.classList.add('is-loading');
-  } else {
-    loadingCount = Math.max(0, loadingCount-1);
-    if(loadingCount===0){
-      loader.style.display = 'none';
-      loader.setAttribute('aria-hidden','true');
-      document.body.classList.remove('is-loading');
-    }
-  }
+function fmtTimer(s){
+  const m = Math.floor(s/60), r = s%60;
+  return `${m}:${r.toString().padStart(2,'0')}`;
+}
+function startTimer(){
+  clearInterval(timerId);
+  document.getElementById('timer').textContent = fmtTimer(remaining);
+  timerId = setInterval(()=>{
+    remaining = Math.max(0, remaining-1);
+    document.getElementById('timer').textContent = fmtTimer(remaining);
+    if(remaining===0) clearInterval(timerId);
+  },1000);
 }
 
-function escapeHtml(value){
-  return String(value ?? '')
-    .replace(/&/g,'&amp;')
-    .replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;')
-    .replace(/"/g,'&quot;')
-    .replace(/'/g,'&#39;');
-}
-
-function asList(value){
-  if(Array.isArray(value)) return value.filter(Boolean);
-  if(typeof value === 'string'){
-    return value.split(',').map(v=>v.trim()).filter(Boolean);
-  }
-  return [];
-}
-
-function show(id, display='block'){
-  const el = document.getElementById(id);
-  if(!el) return;
-  el.style.display = display;
-  el.setAttribute('aria-hidden','false');
-}
-
-function hide(id){
-  const el = document.getElementById(id);
-  if(!el) return;
-  el.style.display = 'none';
-  el.setAttribute('aria-hidden','true');
-}
-
-function pills(parent, values){
-  if(!parent) return;
+function show(id){ document.getElementById(id).style.display='block'; }
+function hide(id){ document.getElementById(id).style.display='none'; }
+function pills(parent, arr){
   parent.innerHTML='';
-  asList(values).forEach(v=>{
+  (arr||[]).forEach(v=>{
     const span=document.createElement('span');
-    span.className='pill';
-    span.textContent=v;
+    span.className='pill'; span.textContent=v;
     parent.appendChild(span);
   });
 }
 
-async function apiPost(body, message='Working...'){
-  toggleLoader(true, message);
-  try{
-    const r = await fetch(API, { method:'POST', body:JSON.stringify(body)});
-    if(!r.ok) throw new Error('Network response was not ok');
-    return await r.json();
-  } finally {
-    toggleLoader(false);
-  }
+async function apiPost(body){
+  const r = await fetch(API, { method:'POST',body:JSON.stringify(body)});
+  return await r.json();
 }
-
-async function apiGet(params, message='Loading...'){
-  toggleLoader(true, message);
-  try{
-    const url = API + "?" + new URLSearchParams(params).toString();
-    const r = await fetch(url);
-    if(!r.ok) throw new Error('Network response was not ok');
-    return await r.json();
-  } finally {
-    toggleLoader(false);
-  }
+async function apiGet(params){
+  const url = API + "?" + new URLSearchParams(params).toString();
+  const r = await fetch(url); return await r.json();
 }
 
 function renderCard(p){
-  const cardEl = document.getElementById('card');
-  const emptyEl = document.getElementById('empty');
-  const actionsEl = document.getElementById('swipe-actions');
-
-  if(!p){
-    if(cardEl){
-      cardEl.style.display='none';
-      cardEl.setAttribute('aria-hidden','true');
-    }
-    if(emptyEl){
-      emptyEl.style.display='flex';
-      emptyEl.setAttribute('aria-hidden','false');
-    }
-    if(actionsEl){
-      actionsEl.style.display='none';
-    }
-    return;
-  }
-
-  if(cardEl){
-    cardEl.style.display='flex';
-    cardEl.setAttribute('aria-hidden','false');
-  }
-  if(emptyEl){
-    emptyEl.style.display='none';
-    emptyEl.setAttribute('aria-hidden','true');
-  }
-  if(actionsEl){
-    actionsEl.style.display='flex';
-  }
-
-  const statusEl = document.getElementById('p-status');
-  if(statusEl){
-    statusEl.textContent = 'Name is hidden until you both match.';
-  }
-
-  const countryEl = document.getElementById('p-country');
-  if(countryEl){
-    countryEl.innerHTML='';
-    if(p.country){
-      const tag=document.createElement('span');
-      tag.className='tag';
-      tag.textContent=p.country;
-      countryEl.appendChild(tag);
-      countryEl.style.display='flex';
-    } else {
-      countryEl.style.display='none';
-    }
-  }
-
-  const bgEl = document.getElementById('p-bg');
-  if(bgEl){
-    bgEl.textContent = p.background ? `Background: ${p.background}` : '';
-  }
-
-  const interestsWrap = document.getElementById('p-interests-wrap');
-  const interestsEl = document.getElementById('p-interests');
-  const interests = asList(p.interests);
-  if(interestsWrap && interestsEl){
-    if(interests.length){
-      interestsWrap.style.display='block';
-      pills(interestsEl, interests);
-    } else {
-      interestsWrap.style.display='none';
-      interestsEl.innerHTML='';
-    }
-  }
+  if(!p){ hide('card'); show('empty'); hide('swipe-actions'); return; }
+  show('card'); hide('empty'); show('swipe-actions');
+  document.getElementById('p-name').textContent = p.name || 'Student';
+  const campusEl = document.getElementById('p-campus');
+  campusEl.innerHTML = '';
+  [p.campus, p.country].filter(Boolean).forEach(value => {
+    const tag = document.createElement('span');
+    tag.className = 'tag';
+    tag.textContent = value;
+    campusEl.appendChild(tag);
+  });
+  campusEl.style.display = campusEl.childElementCount ? 'flex' : 'none';
+  document.getElementById('p-bg').textContent = p.background ? "Background: " + p.background : '';
+  pills(document.getElementById('p-interests'), p.interests || []);
 }
 
 async function nextCard(){
   if(deck.length===0){
-    try{
-      const res = await apiGet({ action:'candidates', code:joinCode }, 'Finding peers...');
-      deck = (res && res.candidates) || [];
-    } catch(err){
-      console.error(err);
-      alert('Unable to load new candidates right now. Please try again in a moment.');
-      renderCard(null);
-      return;
-    }
+    const res = await apiGet({ action:'candidates', code:joinCode });
+    deck = res.candidates || [];
   }
-
   current = deck.shift() || null;
   renderCard(current);
 }
 
 async function onSwipe(dir){
   if(!current) return;
-  let res;
-  try{
-    res = await apiPost({ action:'swipe', code:joinCode, target:current.code, dir }, dir==='right' ? 'Sending like...' : 'Recording pass...');
-  } catch(err){
-    console.error(err);
-    alert('Unable to send your swipe. Please try again.');
-    return;
-  }
-
-  if(res && res.matched){
-    const partner = res.partner || {};
+  const res = await apiPost({ action:'swipe', code:joinCode, target:current.code, dir });
+  if(res.matched){
     const box = document.getElementById('match-alert');
-    const lines = [];
-    const addLine = (label, value)=>{
-      if(!value) return;
-      lines.push(`<div class="match-line"><span>${escapeHtml(label)}</span><div>${escapeHtml(value)}</div></div>`);
-    };
-
-    const partnerName = partner.name || 'New connection';
-    const emailRaw = (partner.teams || '').trim();
-    const interestsList = asList(partner.interests);
-
-    addLine('Name', partnerName);
-    addLine('Campus', partner.campus);
-    addLine('Country', partner.country);
-    addLine('Background', partner.background);
-    if(interestsList.length){
-      addLine('Interests', interestsList.join(', '));
-    }
-    if(emailRaw){
-      addLine('Email', emailRaw);
-    }
-
-    if(box){
-      const actions = [];
-      if(emailRaw){
-        const safeEmail = escapeHtml(emailRaw);
-        const firstName = escapeHtml(partnerName.split(' ')[0] || 'match');
-        actions.push(`<a class="btn primary" href="mailto:${safeEmail}" target="_blank">Email ${firstName}</a>`);
-        actions.push(`<a class="btn" href="https://teams.microsoft.com/l/chat/0/0?users=${encodeURIComponent(emailRaw)}" target="_blank">Open in Teams</a>`);
-      }
-      box.style.display='block';
-      box.innerHTML = `
-        <b>🎉 It's a match!</b>
-        <div class="match-details">
-          ${lines.join('')}
-        </div>
-        ${actions.length ? `<div class="match-actions">${actions.join('')}</div>` : '<div class="hint">Ask your facilitator to help exchange contact details.</div>'}
-      `;
-    }
+    const partner = res.partner;
+    box.style.display='block';
+    const teamsLink = partner.teams ? `https://teams.microsoft.com/l/chat/0/0?users=${encodeURIComponent(partner.teams)}` : null;
+    box.innerHTML = `
+      <b>🎉 It's a match with ${partner.name}!</b><br/>
+      Campus: ${partner.campus || ''}${partner.country ? ` · Country: ${partner.country}` : ''} · Background: ${partner.background || ''}<br/>
+      ${teamsLink ? `<a href="${teamsLink}" target="_blank" class="btn" style="display:inline-block;margin-top:8px">Open Teams chat</a>` : '<span class="hint">Ask your facilitator to share contact</span>'}
+    `;
   }
-
   await nextCard();
 }
 
@@ -690,111 +501,48 @@ async function saveProfile(){
   const teams = document.getElementById('teams').value.trim();
   const interests = document.getElementById('interests').value.split(',').map(s=>s.trim()).filter(Boolean);
 
-  if(!name || !campus || !country || !background){
-    alert('Please complete Name, Campus, Country, and Background.');
-    return;
-  }
+  if(!name || !campus || !country || !background){ alert("Please complete Name, Campus, Country, and Background."); return; }
 
-  let res;
-  try{
-    res = await apiPost({ action:'register', name, campus, country, background, interests, teams }, 'Saving your profile...');
-  } catch(err){
-    console.error(err);
-    alert('Unable to save your profile. Please try again.');
-    return;
-  }
-
-  if(!res || !res.ok){
-    alert((res && res.error) || 'Something went wrong.');
-    return;
-  }
-
+  const res = await apiPost({ action:'register', name, campus, country, background, interests, teams });
+  if(!res.ok){ alert(res.error || "Error"); return; }
   joinCode = res.code;
   localStorage.setItem('joinCode', joinCode);
   myProfile = res.profile;
-  deck = [];
-  current = null;
 
-  hide('screen-profile');
-  show('screen-swipe');
-  hide('restore-form');
-  const matchAlert = document.getElementById('match-alert');
-  if(matchAlert){
-    matchAlert.style.display='none';
-  }
+  hide('screen-profile'); show('screen-swipe');
+  startTimer();
   await nextCard();
 }
 
 async function restore(){
   const code = document.getElementById('restore-code').value.trim();
-  if(!code){
-    alert('Enter your Join Code');
-    return;
-  }
-
-  let res;
-  try{
-    res = await apiGet({ action:'restore', code }, 'Restoring session...');
-  } catch(err){
-    console.error(err);
-    alert('Unable to restore your session right now. Please try again.');
-    return;
-  }
-
-  if(!res || !res.ok){
-    alert((res && res.error) || 'Invalid code');
-    return;
-  }
-
-  joinCode = code;
-  localStorage.setItem('joinCode', joinCode);
+  if(!code){ alert('Enter your Join Code'); return; }
+  const res = await apiGet({ action:'restore', code });
+  if(!res.ok){ alert(res.error || 'Invalid code'); return; }
+  joinCode = code; localStorage.setItem('joinCode', joinCode);
   myProfile = res.profile;
-  deck = [];
-  current = null;
-
-  hide('screen-profile');
-  show('screen-swipe');
-  hide('restore-form');
-  const matchAlert = document.getElementById('match-alert');
-  if(matchAlert){
-    matchAlert.style.display='none';
-  }
+  hide('screen-profile'); show('screen-swipe');
+  startTimer();
   await nextCard();
 }
 
 document.getElementById('btn-start').onclick = saveProfile;
 document.getElementById('btn-no').onclick = ()=>onSwipe('left');
 document.getElementById('btn-yes').onclick = ()=>onSwipe('right');
-document.getElementById('btn-refresh').onclick = ()=>{
-  deck = [];
-  nextCard();
-};
+document.getElementById('btn-refresh').onclick = nextCard;
 
 document.getElementById('btn-restore').onclick = ()=>show('restore-form');
 document.getElementById('btn-restore-do').onclick = restore;
 
+// Auto-restore if joinCode exists
 (async function boot(){
   if(joinCode){
-    try{
-      const res = await apiGet({ action:'restore', code:joinCode }, 'Restoring session...');
-      if(res && res.ok){
-        myProfile = res.profile;
-        deck = [];
-        current = null;
-        hide('screen-profile');
-        show('screen-swipe');
-        hide('restore-form');
-        const matchAlert = document.getElementById('match-alert');
-        if(matchAlert){
-          matchAlert.style.display='none';
-        }
-        await nextCard();
-        return;
-      }
-      localStorage.removeItem('joinCode');
-    } catch(err){
-      console.error(err);
-      localStorage.removeItem('joinCode');
+    const res = await apiGet({ action:'restore', code:joinCode });
+    if(res.ok){
+      myProfile = res.profile;
+      hide('screen-profile'); show('screen-swipe');
+      startTimer();
+      await nextCard();
     }
   }
 })();
