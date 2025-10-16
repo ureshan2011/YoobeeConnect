@@ -88,6 +88,10 @@
   .swipe-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:4px 0 18px}
   .swipe-head h3{margin:0;font-size:22px;font-weight:650}
   .hint{font-size:13px;color:#a3b2d6;line-height:1.5}
+  .session-bar{display:none;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:rgba(15, 23, 42, 0.55);border:1px solid rgba(148, 163, 184, 0.18);border-radius:14px;padding:12px 16px}
+  .session-bar .code{font-family:"JetBrains Mono","Fira Code","SFMono-Regular",monospace;letter-spacing:1px;font-size:14px;background:rgba(15, 23, 42, 0.9);padding:6px 10px;border-radius:10px;border:1px dashed rgba(148, 163, 184, 0.4)}
+  .session-actions{display:flex;gap:8px;flex-wrap:wrap}
+  .session-actions .btn{flex-shrink:0}
   .tag-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
   .tag{
     display:inline-flex;
@@ -375,6 +379,16 @@
       <div class="swipe-head">
         <h3>Swipe candidates</h3>
       </div>
+      <div class="session-bar" id="session-bar">
+        <div>
+          <div class="muted" style="margin-bottom:4px;font-size:13px">Your Join Code</div>
+          <div class="code" id="session-code">—</div>
+        </div>
+        <div class="session-actions">
+          <button class="btn ghost" id="btn-copy">Copy Code</button>
+          <button class="btn" id="btn-logout">Log out &amp; reset</button>
+        </div>
+      </div>
       <div id="match-alert" class="match" style="display:none"></div>
       <div class="deck">
         <div class="profile center loader-wrap" id="loading" style="display:none">
@@ -452,6 +466,54 @@ function renderCard(p){
   pills(document.getElementById('p-interests'), p.interests || []);
 }
 
+function updateSessionUI(){
+  const bar = document.getElementById('session-bar');
+  const codeEl = document.getElementById('session-code');
+  if(joinCode){
+    codeEl.textContent = joinCode;
+    bar.style.display = 'flex';
+  }else{
+    codeEl.textContent = '—';
+    bar.style.display = 'none';
+  }
+}
+
+async function copyJoinCode(){
+  if(!joinCode) return;
+  const copyBtn = document.getElementById('btn-copy');
+  const original = copyBtn.textContent;
+  try{
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      await navigator.clipboard.writeText(joinCode);
+    }else{
+      throw new Error('Clipboard API unavailable');
+    }
+    copyBtn.textContent = 'Copied!';
+  }catch(err){
+    window.prompt('Copy your Join Code', joinCode);
+    copyBtn.textContent = 'Copy Code';
+    return;
+  }
+  setTimeout(()=>{ copyBtn.textContent = original; }, 1600);
+}
+
+function logout(){
+  localStorage.removeItem('joinCode');
+  joinCode = null;
+  myProfile = null;
+  deck = [];
+  current = null;
+  const matchBox = document.getElementById('match-alert');
+  matchBox.style.display = 'none';
+  matchBox.innerHTML = '';
+  document.getElementById('restore-code').value = '';
+  document.getElementById('btn-copy').textContent = 'Copy Code';
+  hide('screen-swipe');
+  show('screen-profile');
+  hide('restore-form');
+  updateSessionUI();
+}
+
 function setLoading(state){
   const loader = document.getElementById('loading');
   if(state){
@@ -515,6 +577,7 @@ async function saveProfile(){
   joinCode = res.code;
   localStorage.setItem('joinCode', joinCode);
   myProfile = res.profile;
+  updateSessionUI();
 
   hide('screen-profile'); show('screen-swipe');
   await nextCard();
@@ -527,6 +590,7 @@ async function restore(){
   if(!res.ok){ alert(res.error || 'Invalid code'); return; }
   joinCode = code; localStorage.setItem('joinCode', joinCode);
   myProfile = res.profile;
+  updateSessionUI();
   hide('screen-profile'); show('screen-swipe');
   await nextCard();
 }
@@ -535,18 +599,28 @@ document.getElementById('btn-start').onclick = saveProfile;
 document.getElementById('btn-no').onclick = ()=>onSwipe('left');
 document.getElementById('btn-yes').onclick = ()=>onSwipe('right');
 document.getElementById('btn-refresh').onclick = nextCard;
+document.getElementById('btn-copy').onclick = copyJoinCode;
+document.getElementById('btn-logout').onclick = ()=>{
+  if(confirm('Log out and clear this device\'s session?')){
+    logout();
+  }
+};
 
 document.getElementById('btn-restore').onclick = ()=>show('restore-form');
 document.getElementById('btn-restore-do').onclick = restore;
 
 // Auto-restore if joinCode exists
 (async function boot(){
+  updateSessionUI();
   if(joinCode){
     const res = await apiGet({ action:'restore', code:joinCode });
     if(res.ok){
       myProfile = res.profile;
       hide('screen-profile'); show('screen-swipe');
       await nextCard();
+    }else{
+      logout();
+      alert('Saved session expired or was not found. Please enter a Join Code or create a new profile.');
     }
   }
 })();
