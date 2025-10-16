@@ -5,31 +5,117 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Yoobee Connect · Swipe</title>
 <style>
-  :root { --bg:#0f172a; --card:#111827; --text:#e5e7eb; --muted:#9ca3af; --acc:#22d3ee; }
-  body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:linear-gradient(180deg,#0b1022,#0f172a 60%);color:var(--text);display:flex;min-height:100vh;align-items:center;justify-content:center;padding:24px}
-  .app{width:100%;max-width:720px}
-  .card{background:rgba(17,24,39,.7);backdrop-filter: blur(6px);border:1px solid #1f2937;border-radius:20px;padding:20px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
-  h1{margin:0 0 6px;font-weight:750;letter-spacing:.2px}
-  .sub{color:var(--muted);margin:0 0 16px}
-  label{display:block;margin:10px 0 6px;color:#cbd5e1}
-  input,select,textarea{width:100%;padding:10px 12px;border-radius:10px;border:1px solid #293548;background:#0b1220;color:var(--text)}
-  .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-  .btn{appearance:none;border:0;border-radius:12px;padding:12px 14px;background:#1f2a44;color:#e5e7eb;font-weight:700;cursor:pointer}
-  .btn.primary{background:linear-gradient(90deg,#06b6d4,#22d3ee)}
-  .btn.ghost{background:transparent;border:1px solid #304063}
-  .actions{display:flex;gap:12px;margin-top:14px;flex-wrap:wrap}
-  .deck{display:flex;gap:16px;align-items:stretch;margin-top:10px}
-  .profile{flex:1;border:1px solid #24304f;border-radius:16px;padding:16px;background:#0b1220}
-  .pill{display:inline-flex;gap:6px;background:#12203d;border:1px solid #213357;border-radius:999px;padding:6px 10px;margin:4px 6px 0 0;color:#cde8ff;font-size:13px}
-  .badges{margin-top:8px}
-  .foot{margin-top:14px;color:#93a3c7;font-size:14px}
-  .hr{height:1px;background:#1f2937;margin:14px 0}
+  :root {
+    --bg: #0f172a;
+    --bg-soft: #101b37;
+    --card: rgba(13, 23, 45, 0.82);
+    --border: rgba(148, 163, 184, 0.18);
+    --text: #f8fafc;
+    --muted: #9ca3af;
+    --acc: #38bdf8;
+    --accent-soft: rgba(56, 189, 248, 0.12);
+    --shadow: 0 25px 60px rgba(15, 23, 42, 0.45);
+  }
+  * { box-sizing: border-box; }
+  body{
+    margin:0;
+    font-family:"Inter", system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    background:radial-gradient(circle at 0% 0%, rgba(56,189,248,0.22), transparent 40%),
+               radial-gradient(circle at 100% 0%, rgba(16,185,129,0.18), transparent 45%),
+               linear-gradient(180deg, #0b1022 0%, #0f172a 60%, #0b162f 100%);
+    color:var(--text);
+    display:flex;
+    min-height:100vh;
+    align-items:center;
+    justify-content:center;
+    padding:32px;
+  }
+  .app{width:100%;max-width:760px;display:flex;flex-direction:column;gap:20px}
+  .card{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:26px;
+    padding:28px;
+    box-shadow:var(--shadow);
+    backdrop-filter:blur(16px);
+  }
+  h1{margin:0 0 8px;font-weight:700;letter-spacing:.2px;font-size:30px}
+  .sub{color:var(--muted);margin:0 0 20px;font-size:16px;line-height:1.5}
+  label{display:block;margin:12px 0 8px;color:#cbd5f5;font-size:14px;font-weight:600}
+  input,select,textarea{
+    width:100%;
+    padding:12px 14px;
+    border-radius:14px;
+    border:1px solid rgba(148, 163, 184, 0.3);
+    background:rgba(15, 23, 42, 0.65);
+    color:var(--text);
+    transition:border 0.2s, box-shadow 0.2s;
+    font-size:15px;
+  }
+  input:focus,select:focus,textarea:focus{
+    outline:none;
+    border-color:rgba(56, 189, 248, 0.8);
+    box-shadow:0 0 0 4px var(--accent-soft);
+  }
+  select{appearance:none;background-image:url('data:image/svg+xml,%3Csvg width="12" height="8" viewBox="0 0 12 8" fill="none" xmlns="http://www.w3.org/2000/svg"%3E%3Cpath d="M1.41 0.589844L6 5.16984L10.59 0.589844L12 1.99984L6 7.99984L0 1.99984L1.41 0.589844Z" fill="%23cbd5f5"/%3E%3C/svg%3E');background-repeat:no-repeat;background-position:right 14px center;background-size:12px}
+  .row{display:flex;flex-wrap:wrap;gap:16px}
+  .row > div{flex:1 1 240px;min-width:0}
+  .btn{
+    appearance:none;
+    border:0;
+    border-radius:14px;
+    padding:12px 18px;
+    background:rgba(15, 23, 42, 0.75);
+    color:#e5f2ff;
+    font-weight:650;
+    cursor:pointer;
+    transition:transform 0.15s ease, box-shadow 0.2s ease, background 0.2s;
+  }
+  .btn:hover{transform:translateY(-1px);box-shadow:0 10px 25px rgba(15,23,42,0.35)}
+  .btn.primary{background:linear-gradient(135deg,#06b6d4,#38bdf8);color:#0b1220}
+  .btn.primary:hover{box-shadow:0 15px 30px rgba(56,189,248,0.4)}
+  .btn.ghost{background:transparent;border:1px solid rgba(148, 163, 184, 0.35);color:#e2e8f0}
+  .actions{display:flex;gap:12px;margin-top:18px;flex-wrap:wrap}
+  .deck{display:flex;gap:18px;align-items:stretch;margin-top:16px;flex-wrap:wrap}
+  .profile{flex:1 1 300px;border:1px solid rgba(148,163,184,0.16);border-radius:20px;padding:20px;background:rgba(9,16,31,0.75);min-height:220px;display:flex;flex-direction:column;justify-content:space-between}
+  .pill{display:inline-flex;align-items:center;gap:6px;background:rgba(56,189,248,0.16);border:1px solid rgba(56,189,248,0.35);border-radius:999px;padding:6px 12px;margin:4px 6px 0 0;color:#cde8ff;font-size:13px;font-weight:500}
+  .badges{margin-top:10px;display:flex;flex-wrap:wrap}
+  .foot{margin-top:16px;color:#93a3c7;font-size:14px;line-height:1.5}
+  .hr{height:1px;background:rgba(148,163,184,0.14);margin:18px 0}
   .muted{color:#9ca3af}
-  .center{display:flex;align-items:center;justify-content:center}
-  .match{border:1px solid #2b3e6a;background:#101a33;padding:14px;border-radius:12px;margin-top:12px}
-  .timer{font-variant-numeric:tabular-nums;color:#86efac;font-weight:700}
-  .hint{font-size:13px;color:#a3b2d6}
-  .right{float:right}
+  .center{display:flex;align-items:center;justify-content:center;text-align:center}
+  .match{border:1px solid rgba(16,185,129,0.35);background:rgba(16,185,129,0.08);padding:16px;border-radius:16px;margin-top:16px;line-height:1.5}
+  .swipe-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:4px 0 18px}
+  .swipe-head h3{margin:0;font-size:22px;font-weight:650}
+  .timer-label{display:inline-flex;align-items:center;gap:8px;font-size:14px;color:#cbd5f5;background:rgba(134,239,172,0.1);padding:8px 12px;border-radius:12px;border:1px solid rgba(134,239,172,0.35)}
+  .timer{font-variant-numeric:tabular-nums;color:#bbf7d0;font-weight:700;letter-spacing:1px}
+  .hint{font-size:13px;color:#a3b2d6;line-height:1.5}
+  .tag-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .tag{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    background:rgba(148, 163, 184, 0.1);
+    color:#dbeafe;
+    padding:8px 12px;
+    border-radius:999px;
+    font-size:13px;
+    text-transform:uppercase;
+    letter-spacing:1px;
+  }
+  @media (max-width:900px){
+    body{padding:24px}
+    .card{padding:24px;border-radius:22px}
+  }
+  @media (max-width:640px){
+    body{padding:18px;align-items:flex-start}
+    .app{gap:16px}
+    .actions{flex-direction:column}
+    .actions .btn{width:100%}
+    .deck{flex-direction:column}
+    .profile{min-height:unset}
+    .swipe-head{flex-direction:column;align-items:flex-start;gap:8px}
+  }
 </style>
 </head>
 <body>
@@ -48,10 +134,211 @@
           <label>Campus</label>
           <select id="campus">
             <option value="">Select campus</option>
+            <option>Auckland1</option>
+            <option>Auckland2</option>
+            <option>Auckland3</option>
             <option>Christchurch</option>
-            <option>Auckland</option>
-            <option>Wellington</option>
-            <option>Dunedin</option>
+          </select>
+        </div>
+        <div>
+          <label>Country</label>
+          <select id="country">
+            <option value="">Select country</option>
+            <option>Afghanistan</option>
+            <option>Albania</option>
+            <option>Algeria</option>
+            <option>Andorra</option>
+            <option>Angola</option>
+            <option>Antigua and Barbuda</option>
+            <option>Argentina</option>
+            <option>Armenia</option>
+            <option>Australia</option>
+            <option>Austria</option>
+            <option>Azerbaijan</option>
+            <option>Bahamas</option>
+            <option>Bahrain</option>
+            <option>Bangladesh</option>
+            <option>Barbados</option>
+            <option>Belarus</option>
+            <option>Belgium</option>
+            <option>Belize</option>
+            <option>Benin</option>
+            <option>Bhutan</option>
+            <option>Bolivia</option>
+            <option>Bosnia and Herzegovina</option>
+            <option>Botswana</option>
+            <option>Brazil</option>
+            <option>Brunei</option>
+            <option>Bulgaria</option>
+            <option>Burkina Faso</option>
+            <option>Burundi</option>
+            <option>Cabo Verde</option>
+            <option>Cambodia</option>
+            <option>Cameroon</option>
+            <option>Canada</option>
+            <option>Central African Republic</option>
+            <option>Chad</option>
+            <option>Chile</option>
+            <option>China</option>
+            <option>Colombia</option>
+            <option>Comoros</option>
+            <option>Congo, Democratic Republic of the</option>
+            <option>Congo, Republic of the</option>
+            <option>Costa Rica</option>
+            <option>Croatia</option>
+            <option>Cuba</option>
+            <option>Cyprus</option>
+            <option>Czechia</option>
+            <option>Denmark</option>
+            <option>Djibouti</option>
+            <option>Dominica</option>
+            <option>Dominican Republic</option>
+            <option>Ecuador</option>
+            <option>Egypt</option>
+            <option>El Salvador</option>
+            <option>Equatorial Guinea</option>
+            <option>Eritrea</option>
+            <option>Estonia</option>
+            <option>Eswatini</option>
+            <option>Ethiopia</option>
+            <option>Fiji</option>
+            <option>Finland</option>
+            <option>France</option>
+            <option>Gabon</option>
+            <option>Gambia</option>
+            <option>Georgia</option>
+            <option>Germany</option>
+            <option>Ghana</option>
+            <option>Greece</option>
+            <option>Grenada</option>
+            <option>Guatemala</option>
+            <option>Guinea</option>
+            <option>Guinea-Bissau</option>
+            <option>Guyana</option>
+            <option>Haiti</option>
+            <option>Honduras</option>
+            <option>Hungary</option>
+            <option>Iceland</option>
+            <option>India</option>
+            <option>Indonesia</option>
+            <option>Iran</option>
+            <option>Iraq</option>
+            <option>Ireland</option>
+            <option>Israel</option>
+            <option>Italy</option>
+            <option>Jamaica</option>
+            <option>Japan</option>
+            <option>Jordan</option>
+            <option>Kazakhstan</option>
+            <option>Kenya</option>
+            <option>Kiribati</option>
+            <option>Korea, North</option>
+            <option>Korea, South</option>
+            <option>Kosovo</option>
+            <option>Kuwait</option>
+            <option>Kyrgyzstan</option>
+            <option>Laos</option>
+            <option>Latvia</option>
+            <option>Lebanon</option>
+            <option>Lesotho</option>
+            <option>Liberia</option>
+            <option>Libya</option>
+            <option>Liechtenstein</option>
+            <option>Lithuania</option>
+            <option>Luxembourg</option>
+            <option>Madagascar</option>
+            <option>Malawi</option>
+            <option>Malaysia</option>
+            <option>Maldives</option>
+            <option>Mali</option>
+            <option>Malta</option>
+            <option>Marshall Islands</option>
+            <option>Mauritania</option>
+            <option>Mauritius</option>
+            <option>Mexico</option>
+            <option>Micronesia</option>
+            <option>Moldova</option>
+            <option>Monaco</option>
+            <option>Mongolia</option>
+            <option>Montenegro</option>
+            <option>Morocco</option>
+            <option>Mozambique</option>
+            <option>Myanmar</option>
+            <option>Namibia</option>
+            <option>Nauru</option>
+            <option>Nepal</option>
+            <option>Netherlands</option>
+            <option>New Zealand</option>
+            <option>Nicaragua</option>
+            <option>Niger</option>
+            <option>Nigeria</option>
+            <option>North Macedonia</option>
+            <option>Norway</option>
+            <option>Oman</option>
+            <option>Pakistan</option>
+            <option>Palau</option>
+            <option>Panama</option>
+            <option>Papua New Guinea</option>
+            <option>Paraguay</option>
+            <option>Peru</option>
+            <option>Philippines</option>
+            <option>Poland</option>
+            <option>Portugal</option>
+            <option>Qatar</option>
+            <option>Romania</option>
+            <option>Russia</option>
+            <option>Rwanda</option>
+            <option>Saint Kitts and Nevis</option>
+            <option>Saint Lucia</option>
+            <option>Saint Vincent and the Grenadines</option>
+            <option>Samoa</option>
+            <option>San Marino</option>
+            <option>Sao Tome and Principe</option>
+            <option>Saudi Arabia</option>
+            <option>Senegal</option>
+            <option>Serbia</option>
+            <option>Seychelles</option>
+            <option>Sierra Leone</option>
+            <option>Singapore</option>
+            <option>Slovakia</option>
+            <option>Slovenia</option>
+            <option>Solomon Islands</option>
+            <option>Somalia</option>
+            <option>South Africa</option>
+            <option>South Sudan</option>
+            <option>Spain</option>
+            <option>Sri Lanka</option>
+            <option>Sudan</option>
+            <option>Suriname</option>
+            <option>Sweden</option>
+            <option>Switzerland</option>
+            <option>Syria</option>
+            <option>Taiwan</option>
+            <option>Tajikistan</option>
+            <option>Tanzania</option>
+            <option>Thailand</option>
+            <option>Timor-Leste</option>
+            <option>Togo</option>
+            <option>Tonga</option>
+            <option>Trinidad and Tobago</option>
+            <option>Tunisia</option>
+            <option>Turkey</option>
+            <option>Turkmenistan</option>
+            <option>Tuvalu</option>
+            <option>Uganda</option>
+            <option>Ukraine</option>
+            <option>United Arab Emirates</option>
+            <option>United Kingdom</option>
+            <option>United States</option>
+            <option>Uruguay</option>
+            <option>Uzbekistan</option>
+            <option>Vanuatu</option>
+            <option>Vatican City</option>
+            <option>Venezuela</option>
+            <option>Vietnam</option>
+            <option>Yemen</option>
+            <option>Zambia</option>
+            <option>Zimbabwe</option>
           </select>
         </div>
       </div>
@@ -87,14 +374,16 @@
     </div>
 
     <div id="screen-swipe" style="display:none">
-      <div class="right hint">Time left: <span class="timer" id="timer">10:00</span></div>
-      <h3>Swipe candidates</h3>
+      <div class="swipe-head">
+        <h3>Swipe candidates</h3>
+        <div class="timer-label">Time left <span class="timer" id="timer">10:00</span></div>
+      </div>
       <div id="match-alert" class="match" style="display:none"></div>
       <div class="deck">
         <div class="profile" id="card" style="display:none">
           <div class="muted">Candidate</div>
           <h2 id="p-name" style="margin:6px 0 0"></h2>
-          <div id="p-campus" class="muted"></div>
+          <div id="p-campus" class="tag-list"></div>
           <div id="p-bg" style="margin-top:6px"></div>
           <div class="badges" id="p-interests"></div>
           <div class="hr"></div>
@@ -165,7 +454,15 @@ function renderCard(p){
   if(!p){ hide('card'); show('empty'); hide('swipe-actions'); return; }
   show('card'); hide('empty'); show('swipe-actions');
   document.getElementById('p-name').textContent = p.name || 'Student';
-  document.getElementById('p-campus').textContent = p.campus || '';
+  const campusEl = document.getElementById('p-campus');
+  campusEl.innerHTML = '';
+  [p.campus, p.country].filter(Boolean).forEach(value => {
+    const tag = document.createElement('span');
+    tag.className = 'tag';
+    tag.textContent = value;
+    campusEl.appendChild(tag);
+  });
+  campusEl.style.display = campusEl.childElementCount ? 'flex' : 'none';
   document.getElementById('p-bg').textContent = p.background ? "Background: " + p.background : '';
   pills(document.getElementById('p-interests'), p.interests || []);
 }
@@ -189,7 +486,7 @@ async function onSwipe(dir){
     const teamsLink = partner.teams ? `https://teams.microsoft.com/l/chat/0/0?users=${encodeURIComponent(partner.teams)}` : null;
     box.innerHTML = `
       <b>🎉 It's a match with ${partner.name}!</b><br/>
-      Campus: ${partner.campus || ''} · Background: ${partner.background || ''}<br/>
+      Campus: ${partner.campus || ''}${partner.country ? ` · Country: ${partner.country}` : ''} · Background: ${partner.background || ''}<br/>
       ${teamsLink ? `<a href="${teamsLink}" target="_blank" class="btn" style="display:inline-block;margin-top:8px">Open Teams chat</a>` : '<span class="hint">Ask your facilitator to share contact</span>'}
     `;
   }
@@ -199,13 +496,14 @@ async function onSwipe(dir){
 async function saveProfile(){
   const name = document.getElementById('name').value.trim();
   const campus = document.getElementById('campus').value.trim();
+  const country = document.getElementById('country').value.trim();
   const background = document.getElementById('background').value.trim();
   const teams = document.getElementById('teams').value.trim();
   const interests = document.getElementById('interests').value.split(',').map(s=>s.trim()).filter(Boolean);
 
-  if(!name || !campus || !background){ alert("Please complete Name, Campus, and Background."); return; }
+  if(!name || !campus || !country || !background){ alert("Please complete Name, Campus, Country, and Background."); return; }
 
-  const res = await apiPost({ action:'register', name, campus, background, interests, teams });
+  const res = await apiPost({ action:'register', name, campus, country, background, interests, teams });
   if(!res.ok){ alert(res.error || "Error"); return; }
   joinCode = res.code;
   localStorage.setItem('joinCode', joinCode);
