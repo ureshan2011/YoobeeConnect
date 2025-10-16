@@ -377,6 +377,10 @@
       </div>
       <div id="match-alert" class="match" style="display:none"></div>
       <div class="deck">
+        <div class="profile center loader-wrap" id="loading" style="display:none">
+          <div class="loader"></div>
+          <div class="muted">Loading candidates…</div>
+        </div>
         <div class="profile" id="card" style="display:none">
           <div class="muted">Candidate</div>
           <h2 id="p-name" style="margin:6px 0 0"></h2>
@@ -448,10 +452,32 @@ function renderCard(p){
   pills(document.getElementById('p-interests'), p.interests || []);
 }
 
+function setLoading(state){
+  const loader = document.getElementById('loading');
+  if(state){
+    loader.style.display = 'flex';
+    hide('card');
+    hide('empty');
+    hide('swipe-actions');
+  }else{
+    loader.style.display = 'none';
+  }
+}
+
 async function nextCard(){
   if(deck.length===0){
-    const res = await apiGet({ action:'candidates', code:joinCode });
-    deck = res.candidates || [];
+    setLoading(true);
+    try{
+      const res = await apiGet({ action:'candidates', code:joinCode });
+      deck = res.candidates || [];
+    }catch(err){
+      console.error(err);
+      alert('Unable to load candidates. Please try again.');
+      renderCard(null);
+      return;
+    }finally{
+      setLoading(false);
+    }
   }
   current = deck.shift() || null;
   renderCard(current);
