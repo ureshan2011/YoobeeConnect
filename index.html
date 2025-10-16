@@ -87,8 +87,6 @@
   .match{border:1px solid rgba(16,185,129,0.35);background:rgba(16,185,129,0.08);padding:16px;border-radius:16px;margin-top:16px;line-height:1.5}
   .swipe-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:4px 0 18px}
   .swipe-head h3{margin:0;font-size:22px;font-weight:650}
-  .timer-label{display:inline-flex;align-items:center;gap:8px;font-size:14px;color:#cbd5f5;background:rgba(134,239,172,0.1);padding:8px 12px;border-radius:12px;border:1px solid rgba(134,239,172,0.35)}
-  .timer{font-variant-numeric:tabular-nums;color:#bbf7d0;font-weight:700;letter-spacing:1px}
   .hint{font-size:13px;color:#a3b2d6;line-height:1.5}
   .tag-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
   .tag{
@@ -376,7 +374,6 @@
     <div id="screen-swipe" style="display:none">
       <div class="swipe-head">
         <h3>Swipe candidates</h3>
-        <div class="timer-label">Time left <span class="timer" id="timer">10:00</span></div>
       </div>
       <div id="match-alert" class="match" style="display:none"></div>
       <div class="deck">
@@ -414,22 +411,6 @@ let joinCode = localStorage.getItem("joinCode") || null;
 let myProfile = null;
 let deck = [];
 let current = null;
-let timerId = null, remaining = 10*60; // 10 minutes
-
-function fmtTimer(s){
-  const m = Math.floor(s/60), r = s%60;
-  return `${m}:${r.toString().padStart(2,'0')}`;
-}
-function startTimer(){
-  clearInterval(timerId);
-  document.getElementById('timer').textContent = fmtTimer(remaining);
-  timerId = setInterval(()=>{
-    remaining = Math.max(0, remaining-1);
-    document.getElementById('timer').textContent = fmtTimer(remaining);
-    if(remaining===0) clearInterval(timerId);
-  },1000);
-}
-
 function show(id){ document.getElementById(id).style.display='block'; }
 function hide(id){ document.getElementById(id).style.display='none'; }
 function pills(parent, arr){
@@ -510,7 +491,6 @@ async function saveProfile(){
   myProfile = res.profile;
 
   hide('screen-profile'); show('screen-swipe');
-  startTimer();
   await nextCard();
 }
 
@@ -522,7 +502,6 @@ async function restore(){
   joinCode = code; localStorage.setItem('joinCode', joinCode);
   myProfile = res.profile;
   hide('screen-profile'); show('screen-swipe');
-  startTimer();
   await nextCard();
 }
 
@@ -541,7 +520,6 @@ document.getElementById('btn-restore-do').onclick = restore;
     if(res.ok){
       myProfile = res.profile;
       hide('screen-profile'); show('screen-swipe');
-      startTimer();
       await nextCard();
     }
   }
