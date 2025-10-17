@@ -31,7 +31,6 @@
     .spacer{height:8px}
     hr{border:none;height:1px;background:rgba(255,255,255,.08);margin:12px 0}
     #status{font-size:13px;color:var(--sub)}
-    /* Swipe card */
     .swipe-card{border:1px dashed rgba(255,255,255,.15);border-radius:16px;padding:16px}
     .who{font-size:18px}
     .actions{display:flex;gap:12px;justify-content:space-between}
@@ -134,6 +133,7 @@
    CONFIG
 ========================== */
 const BASE_URL = 'https://script.google.com/macros/s/AKfycbyGjR1PbKzZ1zv571z1Mo9LxK0Jr8Ck5uxx726wrChoXcL11wZ6Falf2VXJEM4RiLKi/exec';
+
 /* ==========================
    STATE
 ========================== */
@@ -173,21 +173,27 @@ function clearSession(){
 }
 
 /* ==========================
-   API
+   API (no headers => simple request, no preflight)
 ========================== */
 async function apiGet(params){
   const url = new URL(BASE_URL);
   Object.entries(params).forEach(([k,v])=> url.searchParams.set(k, v));
-  const r = await fetch(url.toString(), { method:'GET', headers: { 'Cache-Control':'no-cache' }});
-  return r.json();
+  const r = await fetch(url.toString(), { method:'GET' }); // no headers
+  const text = await r.text();
+  try { return JSON.parse(text); } catch { throw new Error('Bad JSON: ' + text); }
 }
+
 async function apiPost(body){
-  const r = await fetch(BASE_URL, {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify(body)
-  });
-  return r.json();
+  // IMPORTANT: no custom headers; string body keeps it a "simple" request (no OPTIONS)
+  let r;
+  try{
+    r = await fetch(BASE_URL, { method:'POST', body: JSON.stringify(body) });
+  }catch(e){
+    throw new Error('Network error: ' + (e && e.message ? e.message : e));
+  }
+  const text = await r.text();
+  try { return JSON.parse(text); }
+  catch { throw new Error('Bad JSON from server: ' + text.slice(0,200)); }
 }
 
 /* ==========================
@@ -223,19 +229,30 @@ async function saveProfile(){
   const background = el('background').value.trim();
   const interests = el('interests').value.trim();
   const teams = el('teams').value.trim();
+  if(!name || !campus || !country || !background){
+    setStatus('Please fill Name, Campus, Country, and Background.'); return;
+  }
   setStatus('Saving…');
-  const res = await apiPost({ action:'register', name, campus, country, background, interests, teams });
+  let res;
+  try{
+    res = await apiPost({ action:'register', name, campus, country, background, interests, teams });
+  }catch(e){
+    setStatus('Save failed: ' + e.message);
+    return;
+  }
   if(!res.ok){ setStatus('Error: ' + res.error); return; }
+
   joinCode = res.code;
   meProfile = res.profile||{};
   saveSession();
+
   el('me-name').textContent = meProfile.name || name;
   el('me-code').textContent = joinCode;
   setStatus('');
   hide('screen-profile'); show('screen-swipe');
   startMatchPolling();
   await fetchCandidates();
-  await syncMatchesFromServer(); // initial hydrate
+  await syncMatchesFromServer(); // hydrate
   await nextCard();
 }
 
@@ -244,7 +261,13 @@ async function restore(){
   const code = prompt('Enter your join code:', joinCode || '');
   if(!code){ return; }
   setStatus('Restoring…');
-  const res = await apiGet({ action:'restore', code });
+  let res;
+  try{
+    res = await apiGet({ action:'restore', code });
+  }catch(e){
+    setStatus('Restore failed: ' + e.message);
+    return;
+  }
   if(!res.ok){ setStatus('Error: ' + res.error); return; }
   joinCode = code.toUpperCase();
   meProfile = res.profile||{};
@@ -277,9 +300,14 @@ function logout(){
 async function fetchCandidates(){
   if(!joinCode) return;
   setStatus('Loading candidates…','status2');
-  const res = await apiGet({ action:'candidates', code: joinCode });
+  let res;
+  try{
+    res = await apiGet({ action:'candidates', code: joinCode });
+  }catch(e){
+    setStatus('Candidates failed: ' + e.message, 'status2');
+    return;
+  }
   if(!res.ok){ setStatus('Error: ' + res.error, 'status2'); return; }
-  // server already filters swiped/matched; still dedupe on client
   const seen = new Set(deck.map(d=>d.code));
   res.candidates.forEach(c=>{ if(!seen.has(c.code) && c.code!==joinCode) deck.push(c); });
   setStatus('', 'status2');
@@ -289,17 +317,21 @@ async function onSwipe(dir){
   if(!current) return;
   const target = current.code;
   swiped.add(target);
-  const res = await apiPost({ action:'swipe', code: joinCode, target, dir });
+  let res;
+  try{
+    res = await apiPost({ action:'swipe', code: joinCode, target, dir });
+  }catch(e){
+    setStatus('Swipe failed: ' + e.message, 'status2');
+    return;
+  }
   if(res.matched && res.partner){
     recordMatch(res.partner);
   }
   await nextCard();
-  // pick up any pairs created while we were idle
   try { await syncMatchesFromServer(); } catch(_e){}
 }
 
 async function nextCard(){
-  // find the next candidate that isn't me and isn't already matched
   const matchedCodes = new Set(matchList.map(m=> (m.partner && m.partner.code) ? m.partner.code : null));
   let next = null;
   while(deck.length){
@@ -312,7 +344,6 @@ async function nextCard(){
   current = next;
   renderCandidate();
   if(!current){
-    // try to refill once
     await fetchCandidates();
     if(deck.length){ return nextCard(); }
   }
@@ -367,7 +398,6 @@ function renderMatches(){
    MATCH SYNC
 ========================== */
 function recordMatch(partner){
-  // normalize + keep latest on top by ts
   const ts = Date.now();
   const norm = {
     ts,
@@ -381,7 +411,6 @@ function recordMatch(partner){
       teams: partner.teams || ''
     }
   };
-  // de-dup by code
   const code = norm.partner.code || (norm.partner.name + '|' + norm.ts);
   const seen = new Set(matchList.map(m => (m.partner && m.partner.code) ? m.partner.code : ''));
   if(!seen.has(code)){ matchList.unshift(norm); }
@@ -389,8 +418,6 @@ function recordMatch(partner){
 }
 
 function applyServerMatches(serverMatches){
-  // server returns [{ts, partner:{name,...}}] (ts may be numeric)
-  // replace local with server truth (sorted desc ts)
   if(!Array.isArray(serverMatches)) return;
   matchList = serverMatches.slice().sort((a,b)=> (b.ts||0)-(a.ts||0));
   renderMatches();
@@ -422,7 +449,6 @@ el('btn-refresh').addEventListener('click', ()=> syncMatchesFromServer());
 window.addEventListener('load', async ()=>{
   loadSession();
   if(joinCode){
-    // fast restore
     try{
       const res = await apiGet({ action:'restore', code: joinCode });
       if(res.ok){
@@ -439,12 +465,8 @@ window.addEventListener('load', async ()=>{
       }
     }catch(_e){}
   }
-  // fallback to profile screen
   hide('screen-swipe'); show('screen-profile');
 });
 </script>
 </body>
 </html>
-
-
-
