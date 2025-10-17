@@ -107,6 +107,40 @@
       grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
       gap: 16px;
     }
+    .photo-field {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      gap: 16px;
+    }
+    .photo-controls {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .photo-preview {
+      width: 96px;
+      height: 96px;
+      border-radius: 18px;
+      object-fit: cover;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-soft);
+      background: var(--surface-soft);
+    }
+    .photo-status.error {
+      color: #d12c2c;
+    }
+    .candidate-photo {
+      width: 100%;
+      max-width: 180px;
+      border-radius: 20px;
+      object-fit: cover;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-soft);
+      margin: 0 auto 16px;
+      display: block;
+      background: var(--surface-soft);
+    }
     .btn {
       cursor: pointer;
       display: inline-flex;
@@ -222,6 +256,32 @@
       background: var(--surface);
       box-shadow: 0 8px 18px rgba(15, 23, 42, 0.04);
     }
+    .match-item {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+    }
+    .match-body {
+      flex: 1;
+    }
+    .match-photo {
+      width: 64px;
+      height: 64px;
+      border-radius: 18px;
+      object-fit: cover;
+      border: 1px solid var(--border);
+      background: var(--surface-soft);
+      box-shadow: 0 6px 14px rgba(15, 23, 42, 0.08);
+      flex-shrink: 0;
+    }
+    .match-photo.placeholder {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      color: var(--sub);
+      background: var(--surface-soft);
+    }
     .small {
       font-size: 12px;
     }
@@ -329,6 +389,17 @@
           <label>Contact email</label>
           <input id="contact" type="email" placeholder="yourname@yoobee.ac.nz" autocomplete="email" required />
         </div>
+        <div>
+          <label>Profile photo</label>
+          <div class="photo-field">
+            <img id="photo-preview" class="photo-preview hidden" alt="Profile preview" />
+            <div class="photo-controls">
+              <input id="photo" type="file" accept="image/*" />
+              <div id="photo-status" class="small muted photo-status"></div>
+              <div class="small muted">We compress your image (max 512px, ~150 KB) before saving it.</div>
+            </div>
+          </div>
+        </div>
         <div class="row">
           <button class="btn acc" id="btn-register">Save & Start</button>
           <button class="btn ghost" id="btn-restore">I already have a code</button>
@@ -347,6 +418,7 @@
             <div class="muted">No more candidates right now. We’ll keep checking for new matches…</div>
           </div>
           <div id="candidate" class="hidden">
+            <img id="c-photo" class="candidate-photo hidden" alt="Candidate photo" />
             <div class="who"><span id="c-name">—</span></div>
             <div class="small muted" id="c-meta">—</div>
             <div class="pill" id="c-tags"></div>
@@ -394,10 +466,15 @@ let deck = [];           // candidate queue
 let swiped = new Set();  // in-session memory
 let matchList = [];      // [{ts, partner:{...}}]
 let current = null;
+let draftPhoto = null;   // base64 data URL awaiting upload
 
 // polling
 let matchPollTimer = null;
 const MATCH_POLL_MS = 15000;
+
+const PHOTO_MAX_DIM = 512;
+const PHOTO_MAX_BYTES = 150 * 1024;
+const PHOTO_MAX_CHAR_LENGTH = 220000;
 
 /* ==========================
    DOM helpers
@@ -410,7 +487,15 @@ const normalizeCandidate = cand => {
   if(!cand || typeof cand !== 'object') return null;
   const code = normalizeCode(cand.code || cand.id || '');
   if(!code) return null;
-  return { ...cand, code };
+  const normalized = { ...cand, code };
+  const rawPhoto = normalized.photo || normalized.avatar || normalized.image || '';
+  const safePhoto = normalizePhotoData(rawPhoto);
+  if(safePhoto){
+    normalized.photo = safePhoto;
+  }else{
+    delete normalized.photo;
+  }
+  return normalized;
 };
 const isValidEmail = email => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 const COUNTRY_LIST = [
@@ -434,6 +519,132 @@ const COUNTRY_LIST = [
   'Tunisia','Turkey','Turkmenistan','Tuvalu','Uganda','Ukraine','United Arab Emirates','United Kingdom','United States',
   'Uruguay','Uzbekistan','Vanuatu','Vatican City','Venezuela','Vietnam','Yemen','Zambia','Zimbabwe'
 ];
+
+function normalizePhotoData(data){
+  if(typeof data !== 'string') return '';
+  const trimmed = data.trim();
+  if(!/^data:image\/(png|jpe?g|webp);base64,/i.test(trimmed)) return '';
+  if(trimmed.length > PHOTO_MAX_CHAR_LENGTH) return '';
+  return trimmed;
+}
+
+function estimateBase64Bytes(dataUrl){
+  if(!dataUrl) return 0;
+  const comma = dataUrl.indexOf(',');
+  const base64 = (comma >= 0 ? dataUrl.slice(comma + 1) : dataUrl).replace(/\s+/g, '');
+  if(!base64.length) return 0;
+  const padding = (base64.match(/=+$/) || [''])[0].length;
+  return Math.max(0, Math.ceil((base64.length * 3) / 4) - padding);
+}
+
+function fileToDataUrl(file){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error('Unable to read file'));
+    reader.readAsDataURL(file);
+  });
+}
+
+function loadImageFromDataUrl(dataUrl){
+  return new Promise((resolve, reject)=>{
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('Unable to decode image'));
+    img.src = dataUrl;
+  });
+}
+
+async function compressImageFile(file){
+  const dataUrl = await fileToDataUrl(file);
+  const img = await loadImageFromDataUrl(dataUrl);
+  const canvas = document.createElement('canvas');
+  const maxSide = Math.max(img.width || 1, img.height || 1);
+  const scale = maxSide > PHOTO_MAX_DIM ? PHOTO_MAX_DIM / maxSide : 1;
+  const width = Math.max(1, Math.round((img.width || 1) * scale));
+  const height = Math.max(1, Math.round((img.height || 1) * scale));
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, width, height);
+  ctx.drawImage(img, 0, 0, width, height);
+  let quality = 0.8;
+  let output = canvas.toDataURL('image/jpeg', quality);
+  for(let i=0;i<5 && estimateBase64Bytes(output) > PHOTO_MAX_BYTES;i++){
+    quality -= 0.12;
+    if(quality < 0.35){ break; }
+    output = canvas.toDataURL('image/jpeg', quality);
+  }
+  if(estimateBase64Bytes(output) > PHOTO_MAX_BYTES){
+    throw new Error('Photo is too large even after compression. Please choose a smaller image.');
+  }
+  return output;
+}
+
+function setPhotoPreview(data){
+  const preview = el('photo-preview');
+  if(!preview) return;
+  const normalized = normalizePhotoData(data || '');
+  if(normalized){
+    preview.src = normalized;
+    preview.classList.remove('hidden');
+  }else{
+    preview.src = '';
+    preview.classList.add('hidden');
+  }
+}
+
+function setPhotoStatus(msg='', isError=false){
+  const node = el('photo-status');
+  if(!node) return;
+  node.textContent = msg || '';
+  node.classList.toggle('error', !!isError);
+}
+
+function applyProfilePhoto(profile){
+  if(!profile || typeof profile !== 'object') return;
+  const safe = normalizePhotoData(profile.photo || '');
+  if(safe){
+    profile.photo = safe;
+  }else{
+    delete profile.photo;
+  }
+}
+
+function refreshPhotoPreview(){
+  const source = draftPhoto || (meProfile && meProfile.photo) || '';
+  setPhotoPreview(source);
+}
+
+async function getPhotoDataForSubmit(){
+  const input = el('photo');
+  if(input && input.files && input.files[0]){
+    if(draftPhoto){
+      return normalizePhotoData(draftPhoto) || '';
+    }
+    const file = input.files[0];
+    if(!file.type || !file.type.startsWith('image/')){
+      throw new Error('Please choose an image file for your profile photo.');
+    }
+    setPhotoStatus('Optimising photo…');
+    const compressed = await compressImageFile(file);
+    const normalized = normalizePhotoData(compressed);
+    if(!normalized){
+      throw new Error('Unable to prepare that photo. Try a different image.');
+    }
+    draftPhoto = normalized;
+    refreshPhotoPreview();
+    setPhotoStatus('Photo ready to upload.');
+    return normalized;
+  }
+  if(draftPhoto){
+    return normalizePhotoData(draftPhoto) || '';
+  }
+  if(meProfile && meProfile.photo){
+    return normalizePhotoData(meProfile.photo) || '';
+  }
+  return '';
+}
 function setStatus(msg, where='status'){ el(where).textContent = msg || ''; }
 function populateCountrySelect(selected=''){
   const select = el('country');
@@ -456,6 +667,7 @@ function populateCountrySelect(selected=''){
 }
 function populateProfileFormFromState(){
   const profile = meProfile || {};
+  applyProfilePhoto(profile);
   const nameField = el('name');
   if(nameField){ nameField.value = profile.name || ''; }
   const campusField = el('campus');
@@ -485,6 +697,13 @@ function populateProfileFormFromState(){
   if(contactField){
     contactField.value = profile.teams || profile.contact || '';
   }
+  const photoInput = el('photo');
+  if(photoInput){ photoInput.value = ''; }
+  if(!draftPhoto){
+    draftPhoto = '';
+  }
+  refreshPhotoPreview();
+  setPhotoStatus('');
 }
 
 /* ==========================
@@ -493,15 +712,21 @@ function populateProfileFormFromState(){
 function saveSession(){
   joinCode = normalizeCode(joinCode);
   localStorage.setItem('yc_code', joinCode || '');
-  localStorage.setItem('yc_profile', JSON.stringify(meProfile||{}));
+  const profileToSave = { ...(meProfile || {}) };
+  applyProfilePhoto(profileToSave);
+  localStorage.setItem('yc_profile', JSON.stringify(profileToSave));
 }
 function loadSession(){
   joinCode = normalizeCode(localStorage.getItem('yc_code') || '');
   try{ meProfile = JSON.parse(localStorage.getItem('yc_profile')||'{}'); }catch{ meProfile = {}; }
+  if(!meProfile || typeof meProfile !== 'object'){ meProfile = {}; }
+  applyProfilePhoto(meProfile);
+  draftPhoto = '';
 }
 function clearSession(){
   localStorage.removeItem('yc_code');
   localStorage.removeItem('yc_profile');
+  draftPhoto = '';
 }
 
 /* ==========================
@@ -575,10 +800,19 @@ async function saveProfile(){
   }
   const interestList = interests.split(',').map(s => s.trim()).filter(Boolean);
   const hobbyList = hobbies.split(',').map(s => s.trim()).filter(Boolean);
+  let photoData = '';
+  try{
+    photoData = await getPhotoDataForSubmit();
+  }catch(e){
+    const msg = e && e.message ? e.message : 'Unable to process photo.';
+    setPhotoStatus(msg, true);
+    setStatus(msg);
+    return;
+  }
   setStatus('Saving…');
   let res;
   try{
-    res = await apiPost({ action:'register', name, campus, gender, country, background, interests, hobbies, teams: contactEmail });
+    res = await apiPost({ action:'register', name, campus, gender, country, background, interests, hobbies, teams: contactEmail, photoData });
   }catch(e){
     setStatus('Save failed: ' + e.message);
     return;
@@ -587,18 +821,27 @@ async function saveProfile(){
 
   joinCode = normalizeCode(res.code);
   meProfile = res.profile||{};
+  applyProfilePhoto(meProfile);
   if(meProfile){
     meProfile.country = meProfile.country || country;
     meProfile.interests = Array.isArray(meProfile.interests) && meProfile.interests.length ? meProfile.interests : interestList;
     meProfile.hobbies = Array.isArray(meProfile.hobbies) && meProfile.hobbies.length ? meProfile.hobbies : hobbyList;
     meProfile.teams = meProfile.teams || contactEmail;
     meProfile.gender = meProfile.gender || gender;
+    if(!meProfile.photo && photoData){
+      meProfile.photo = normalizePhotoData(photoData);
+    }
   }
+  draftPhoto = '';
   saveSession();
   populateProfileFormFromState();
 
   el('me-name').textContent = meProfile.name || name;
   el('me-code').textContent = joinCode;
+  refreshPhotoPreview();
+  setPhotoStatus(meProfile && meProfile.photo ? 'Photo saved.' : '');
+  const photoInput = el('photo');
+  if(photoInput){ photoInput.value = ''; }
   setStatus('');
   hide('screen-profile'); show('screen-swipe');
   startMatchPolling();
@@ -622,9 +865,15 @@ async function restore(){
   if(!res.ok){ setStatus('Error: ' + res.error); return; }
   joinCode = code;
   meProfile = res.profile||{};
+  applyProfilePhoto(meProfile);
   matchList = Array.isArray(res.matches)? res.matches : [];
   saveSession();
   populateProfileFormFromState();
+  draftPhoto = '';
+  refreshPhotoPreview();
+  setPhotoStatus(meProfile && meProfile.photo ? 'Photo restored.' : '');
+  const photoInput = el('photo');
+  if(photoInput){ photoInput.value = ''; }
   el('me-name').textContent = meProfile.name || '—';
   el('me-code').textContent = joinCode;
   setStatus('');
@@ -751,6 +1000,17 @@ function renderCandidate(){
     return;
   }
   hide('candidate-empty'); show('candidate');
+  const photoEl = el('c-photo');
+  if(photoEl){
+    const photo = normalizePhotoData(current.photo || '');
+    if(photo){
+      photoEl.src = photo;
+      photoEl.classList.remove('hidden');
+    }else{
+      photoEl.src = '';
+      photoEl.classList.add('hidden');
+    }
+  }
   el('c-name').textContent = current.name || '(No name)';
   const genderMeta = current.gender ? ` • ${current.gender}` : '';
   el('c-meta').textContent = `${current.campus||'—'} • ${current.country||'—'} • ${current.background||'—'}${genderMeta}`;
@@ -772,15 +1032,24 @@ function renderMatches(){
     const contactLine = contactValue ? `<div class="small">Email: <b>${escapeHtml(contactValue)}</b></div>` : '';
     const codeSpan = p.code ? `<div class="small muted">Code: ${escapeHtml(normalizeCode(p.code))}</div>` : '';
     const genderLine = p.gender ? `<div class="small">Gender: <b>${escapeHtml(p.gender)}</b></div>` : '';
+    const photo = normalizePhotoData(p.photo || '');
+    const safeName = p.name || 'Unknown';
+    const initials = safeName.trim().charAt(0).toUpperCase() || '🤝';
+    const photoHtml = photo
+      ? `<img class="match-photo" src="${escapeHtml(photo)}" alt="${escapeHtml(safeName)}" />`
+      : `<div class="match-photo placeholder">${escapeHtml(initials)}</div>`;
     box.insertAdjacentHTML('beforeend', `
-      <div class="item">
-        <div><b>${escapeHtml(p.name||'Unknown')}</b></div>
-        <div class="small muted">${escapeHtml(p.campus||'—')} • ${escapeHtml(p.country||'—')} • ${escapeHtml(p.background||'—')}</div>
-        ${genderLine}
-        <div class="pill" style="margin-top:6px">${tags||'<span class="small muted">No interests</span>'}</div>
-        ${contactLine}
-        ${codeSpan}
-        <div class="small muted" style="margin-top:6px">Matched: ${escapeHtml(when)}</div>
+      <div class="item match-item">
+        ${photoHtml}
+        <div class="match-body">
+          <div><b>${escapeHtml(safeName)}</b></div>
+          <div class="small muted">${escapeHtml(p.campus||'—')} • ${escapeHtml(p.country||'—')} • ${escapeHtml(p.background||'—')}</div>
+          ${genderLine}
+          <div class="pill" style="margin-top:6px">${tags||'<span class="small muted">No interests</span>'}</div>
+          ${contactLine}
+          ${codeSpan}
+          <div class="small muted" style="margin-top:6px">Matched: ${escapeHtml(when)}</div>
+        </div>
       </div>
     `);
   });
@@ -815,7 +1084,8 @@ function recordMatch(partner){
         : (typeof partnerHobbies === 'string' && partnerHobbies.trim()
             ? partnerHobbies.split(/[,;|]/).map(h => h.trim()).filter(Boolean)
             : []),
-      teams: partner && partner.teams ? partner.teams : (partner && partner.contact ? partner.contact : '')
+      teams: partner && partner.teams ? partner.teams : (partner && partner.contact ? partner.contact : ''),
+      photo: normalizePhotoData(partner && partner.photo ? partner.photo : '')
     }
   };
   const seen = new Set(
@@ -837,24 +1107,31 @@ function applyServerMatches(serverMatches){
       if(!code || (myCode && code === myCode)) return null;
       const partnerInterests = partner.interests;
       const partnerHobbies = partner.hobbies;
+      const normalizedPartner = {
+        ...partner,
+        code,
+        gender: partner.gender || '',
+        teams: partner.teams || partner.contact || '',
+        interests: Array.isArray(partnerInterests)
+          ? partnerInterests.slice()
+          : (typeof partnerInterests === 'string' && partnerInterests.trim()
+              ? partnerInterests.split(/[,;|]/).map(t => t.trim()).filter(Boolean)
+              : []),
+        hobbies: Array.isArray(partnerHobbies)
+          ? partnerHobbies.slice()
+          : (typeof partnerHobbies === 'string' && partnerHobbies.trim()
+              ? partnerHobbies.split(/[,;|]/).map(t => t.trim()).filter(Boolean)
+              : [])
+      };
+      const safePhoto = normalizePhotoData(partner.photo || '');
+      if(safePhoto){
+        normalizedPartner.photo = safePhoto;
+      }else{
+        delete normalizedPartner.photo;
+      }
       return {
         ts: typeof entry.ts === 'number' ? entry.ts : Date.parse(entry.ts) || Date.now(),
-        partner: {
-          ...partner,
-          code,
-          gender: partner.gender || '',
-          teams: partner.teams || partner.contact || '',
-          interests: Array.isArray(partnerInterests)
-            ? partnerInterests.slice()
-            : (typeof partnerInterests === 'string' && partnerInterests.trim()
-                ? partnerInterests.split(/[,;|]/).map(t => t.trim()).filter(Boolean)
-                : []),
-          hobbies: Array.isArray(partnerHobbies)
-            ? partnerHobbies.slice()
-            : (typeof partnerHobbies === 'string' && partnerHobbies.trim()
-                ? partnerHobbies.split(/[,;|]/).map(t => t.trim()).filter(Boolean)
-                : [])
-        }
+        partner: normalizedPartner
       };
     })
     .filter(Boolean);
@@ -893,6 +1170,26 @@ el('btn-logout').addEventListener('click', logout);
 el('btn-left').addEventListener('click', ()=> onSwipe('left'));
 el('btn-right').addEventListener('click', ()=> onSwipe('right'));
 el('btn-refresh').addEventListener('click', ()=> syncMatchesFromServer());
+const photoInputControl = el('photo');
+if(photoInputControl){
+  photoInputControl.addEventListener('change', async ()=>{
+    if(!photoInputControl.files || !photoInputControl.files.length){
+      draftPhoto = '';
+      refreshPhotoPreview();
+      setPhotoStatus(meProfile && meProfile.photo ? 'Photo on file.' : '');
+      return;
+    }
+    try{
+      await getPhotoDataForSubmit();
+    }catch(e){
+      const msg = e && e.message ? e.message : 'Unable to process photo.';
+      setPhotoStatus(msg, true);
+      draftPhoto = '';
+      refreshPhotoPreview();
+      photoInputControl.value = '';
+    }
+  });
+}
 
 window.addEventListener('load', async ()=>{
   loadSession();
@@ -902,6 +1199,12 @@ window.addEventListener('load', async ()=>{
       const res = await apiGet({ action:'restore', code: joinCode });
       if(res.ok){
         meProfile = res.profile||{};
+        applyProfilePhoto(meProfile);
+        draftPhoto = '';
+        refreshPhotoPreview();
+        setPhotoStatus(meProfile && meProfile.photo ? 'Photo restored.' : '');
+        const photoInput = el('photo');
+        if(photoInput){ photoInput.value = ''; }
         matchList = res.matches||[];
         el('me-name').textContent = meProfile.name || '—';
         el('me-code').textContent = joinCode;
