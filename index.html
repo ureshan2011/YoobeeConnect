@@ -1,1073 +1,448 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Yoobee Connect · Swipe</title>
-<style>
-  :root {
-    --bg: #0f172a;
-    --bg-soft: #101b37;
-    --card: rgba(13, 23, 45, 0.82);
-    --border: rgba(148, 163, 184, 0.18);
-    --text: #f8fafc;
-    --muted: #9ca3af;
-    --acc: #38bdf8;
-    --accent-soft: rgba(56, 189, 248, 0.12);
-    --shadow: 0 25px 60px rgba(15, 23, 42, 0.45);
-  }
-  * { box-sizing: border-box; }
-  body{
-    margin:0;
-    font-family:"Inter", system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-    background:radial-gradient(circle at 0% 0%, rgba(56,189,248,0.22), transparent 40%),
-               radial-gradient(circle at 100% 0%, rgba(16,185,129,0.18), transparent 45%),
-               linear-gradient(180deg, #0b1022 0%, #0f172a 60%, #0b162f 100%);
-    color:var(--text);
-    display:flex;
-    min-height:100vh;
-    align-items:center;
-    justify-content:center;
-    padding:32px;
-  }
-  .app{width:100%;max-width:760px;display:flex;flex-direction:column;gap:20px}
-  .card{
-    background:var(--card);
-    border:1px solid var(--border);
-    border-radius:26px;
-    padding:28px;
-    box-shadow:var(--shadow);
-    backdrop-filter:blur(16px);
-  }
-  h1{margin:0 0 8px;font-weight:700;letter-spacing:.2px;font-size:30px}
-  .sub{color:var(--muted);margin:0 0 20px;font-size:16px;line-height:1.5}
-  label{display:block;margin:12px 0 8px;color:#cbd5f5;font-size:14px;font-weight:600}
-  input,select,textarea{
-    width:100%;
-    padding:12px 14px;
-    border-radius:14px;
-    border:1px solid rgba(148, 163, 184, 0.3);
-    background:rgba(15, 23, 42, 0.65);
-    color:var(--text);
-    transition:border 0.2s, box-shadow 0.2s;
-    font-size:15px;
-  }
-  input:focus,select:focus,textarea:focus{
-    outline:none;
-    border-color:rgba(56, 189, 248, 0.8);
-    box-shadow:0 0 0 4px var(--accent-soft);
-  }
-  select{appearance:none;background-image:url('data:image/svg+xml,%3Csvg width="12" height="8" viewBox="0 0 12 8" fill="none" xmlns="http://www.w3.org/2000/svg"%3E%3Cpath d="M1.41 0.589844L6 5.16984L10.59 0.589844L12 1.99984L6 7.99984L0 1.99984L1.41 0.589844Z" fill="%23cbd5f5"/%3E%3C/svg%3E');background-repeat:no-repeat;background-position:right 14px center;background-size:12px}
-  .row{display:flex;flex-wrap:wrap;gap:16px}
-  .row > div{flex:1 1 240px;min-width:0}
-  .btn{
-    appearance:none;
-    border:0;
-    border-radius:14px;
-    padding:12px 18px;
-    background:rgba(15, 23, 42, 0.75);
-    color:#e5f2ff;
-    font-weight:650;
-    cursor:pointer;
-    transition:transform 0.15s ease, box-shadow 0.2s ease, background 0.2s;
-  }
-  .btn:hover{transform:translateY(-1px);box-shadow:0 10px 25px rgba(15,23,42,0.35)}
-  .btn.primary{background:linear-gradient(135deg,#06b6d4,#38bdf8);color:#0b1220}
-  .btn.primary:hover{box-shadow:0 15px 30px rgba(56,189,248,0.4)}
-  .btn.ghost{background:transparent;border:1px solid rgba(148, 163, 184, 0.35);color:#e2e8f0}
-  #btn-restore-do{border:1px solid rgba(226,232,240,0.65)}
-  .actions{display:flex;gap:12px;margin-top:18px;flex-wrap:wrap}
-  .deck{display:flex;gap:18px;align-items:stretch;margin-top:16px;flex-wrap:wrap}
-  .profile{flex:1 1 300px;border:1px solid rgba(148,163,184,0.16);border-radius:20px;padding:20px;background:rgba(9,16,31,0.75);min-height:220px;display:flex;flex-direction:column;justify-content:space-between}
-  .pill{display:inline-flex;align-items:center;gap:6px;background:rgba(56,189,248,0.16);border:1px solid rgba(56,189,248,0.35);border-radius:999px;padding:6px 12px;margin:4px 6px 0 0;color:#cde8ff;font-size:13px;font-weight:500}
-  .badges{margin-top:10px;display:flex;flex-wrap:wrap}
-  .foot{margin-top:16px;color:#93a3c7;font-size:14px;line-height:1.5}
-  .hr{height:1px;background:rgba(148,163,184,0.14);margin:18px 0}
-  .muted{color:#9ca3af}
-  .center{display:flex;align-items:center;justify-content:center;text-align:center}
-  .match-card{
-    border:1px solid rgba(16,185,129,0.35);
-    background:rgba(16,185,129,0.08);
-    padding:16px;
-    border-radius:16px;
-    margin-top:16px;
-    line-height:1.5;
-    display:flex;
-    flex-direction:column;
-    gap:12px;
-  }
-  .match-head{display:flex;flex-wrap:wrap;align-items:flex-start;gap:12px;justify-content:space-between}
-  .match-head-actions{display:flex;gap:8px;flex-wrap:wrap}
-  .match-card h3{margin:0;font-size:18px;font-weight:650}
-  .match-limit{font-size:13px;color:#8be4c8}
-  .match-list{max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:12px;padding-right:4px}
-  .match-entry{background:rgba(15,23,42,0.65);border:1px solid rgba(16,185,129,0.3);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:6px}
-  .match-entry-title{display:flex;align-items:center;justify-content:space-between;gap:12px;font-weight:600;color:#e7fff3}
-  .match-entry-meta{font-size:13px;color:#b0f0d7;display:flex;flex-wrap:wrap;gap:8px}
-  .match-entry-bg{font-size:14px;color:#d9ffe9}
-  .match-entry-time{font-size:12px;color:#74c9a6;white-space:nowrap}
-  .match-entry .badges{margin-top:2px}
-  .match-entry .pill{background:rgba(16,185,129,0.18);border-color:rgba(16,185,129,0.35);color:#cbffec}
-  .match-entry-actions{margin-top:4px}
-  .btn:disabled{opacity:0.6;cursor:not-allowed;box-shadow:none;transform:none}
-  .swipe-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:4px 0 18px}
-  .swipe-head h3{margin:0;font-size:22px;font-weight:650}
-  .hint{font-size:13px;color:#a3b2d6;line-height:1.5}
-  .session-bar{display:none;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:rgba(15, 23, 42, 0.55);border:1px solid rgba(148, 163, 184, 0.18);border-radius:14px;padding:12px 16px}
-  .session-bar .code{font-family:"JetBrains Mono","Fira Code","SFMono-Regular",monospace;letter-spacing:1px;font-size:14px;background:rgba(15, 23, 42, 0.9);padding:6px 10px;border-radius:10px;border:1px dashed rgba(148, 163, 184, 0.4)}
-  .session-actions{display:flex;gap:8px;flex-wrap:wrap}
-  .session-actions .btn{flex-shrink:0}
-  .tag-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
-  .tag{
-    display:inline-flex;
-    align-items:center;
-    gap:6px;
-    background:rgba(148, 163, 184, 0.1);
-    color:#dbeafe;
-    padding:8px 12px;
-    border-radius:999px;
-    font-size:13px;
-    text-transform:uppercase;
-    letter-spacing:1px;
-  }
-  @media (max-width:900px){
-    body{padding:24px}
-    .card{padding:24px;border-radius:22px}
-  }
-  @media (max-width:640px){
-    body{padding:18px;align-items:flex-start}
-    .app{gap:16px}
-    .actions{flex-direction:column}
-    .actions .btn{width:100%}
-    .deck{flex-direction:column}
-    .profile{min-height:unset}
-    .swipe-head{flex-direction:column;align-items:flex-start;gap:8px}
-  }
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Yoobee Connect</title>
+  <style>
+    :root{--bg:#0f172a;--card:#111827;--sub:#94a3b8;--text:#f8fafc;--acc:#22d3ee}
+    *{box-sizing:border-box}
+    body{margin:0;background:linear-gradient(180deg,#0b1222,#0f172a 40%,#0b1222);color:var(--text);font:16px/1.4 system-ui,Segoe UI,Roboto,Helvetica,Arial}
+    .wrap{max-width:900px;margin:40px auto;padding:20px}
+    h1,h2{margin:0 0 10px}
+    h1{font-size:28px}
+    h2{font-size:20px;color:var(--sub)}
+    .card{background:rgba(17,24,39,.8);border:1px solid rgba(255,255,255,.07);border-radius:18px;padding:22px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+    .grid{display:grid;grid-template-columns:1fr;gap:18px}
+    @media(min-width:900px){.grid{grid-template-columns:1.2fr .8fr}}
+    label{display:block;font-size:13px;color:var(--sub);margin-bottom:6px}
+    input,textarea,select{width:100%;background:#0b1326;border:1px solid rgba(255,255,255,.08);color:var(--text);padding:12px 14px;border-radius:12px;outline:none}
+    textarea{min-height:84px}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .btn{cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid rgba(255,255,255,.12);background:#0b1326;color:var(--text);padding:11px 14px;border-radius:12px}
+    .btn.acc{background:var(--acc);color:#001317;border-color:transparent}
+    .btn.ghost{background:transparent}
+    .btn:disabled{opacity:.6;cursor:not-allowed}
+    .center{display:flex;align-items:center;justify-content:center}
+    .stack{display:flex;flex-direction:column;gap:12px}
+    .pill{display:inline-flex;gap:8px;flex-wrap:wrap}
+    .tag{font-size:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);padding:6px 10px;border-radius:999px}
+    .muted{color:var(--sub)}
+    .spacer{height:8px}
+    hr{border:none;height:1px;background:rgba(255,255,255,.08);margin:12px 0}
+    #status{font-size:13px;color:var(--sub)}
+    /* Swipe card */
+    .swipe-card{border:1px dashed rgba(255,255,255,.15);border-radius:16px;padding:16px}
+    .who{font-size:18px}
+    .actions{display:flex;gap:12px;justify-content:space-between}
+    .col{display:flex;flex-direction:column;gap:14px}
+    .matches .item{padding:12px;border:1px solid rgba(255,255,255,.08);border-radius:12px;margin-bottom:10px;background:rgba(255,255,255,.03)}
+    .small{font-size:12px}
+    .right{float:right}
+    .hidden{display:none !important}
+  </style>
 </head>
 <body>
-<div class="app">
-  <div class="card">
-    <h1>Yoobee Connect · Swipe</h1>
-    <p class="sub">Find peers with similar backgrounds and interests across campuses. Mutual 👍 unlocks names and contact details so you can connect directly.</p>
-
-    <div id="screen-profile">
-      <div class="row">
-        <div>
-          <label>Name</label>
-          <input id="name" placeholder="e.g., Aroha T." />
+  <div class="wrap grid">
+    <!-- LEFT: Profile / Swipe -->
+    <div class="stack">
+      <div class="card" id="screen-profile">
+        <h1>Yoobee Connect</h1>
+        <h2>Create your profile (one-time)</h2>
+        <div class="spacer"></div>
+        <div class="row">
+          <div>
+            <label>Name</label>
+            <input id="name" placeholder="e.g., Kauri H. (A7)" />
+          </div>
+          <div>
+            <label>Campus</label>
+            <select id="campus">
+              <option value="">Select campus…</option>
+              <option>Auckland1</option>
+              <option>Auckland2</option>
+              <option>Auckland3</option>
+              <option>Christchurch</option>
+            </select>
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label>Country</label>
+            <input id="country" placeholder="e.g., New Zealand" />
+          </div>
+          <div>
+            <label>Background</label>
+            <input id="background" placeholder="e.g., Computer Science" />
+          </div>
         </div>
         <div>
-          <label>Campus</label>
-          <select id="campus">
-            <option value="">Select campus</option>
-            <option>Auckland1</option>
-            <option>Auckland2</option>
-            <option>Auckland3</option>
-            <option>Christchurch</option>
-          </select>
+          <label>Interests (comma separated)</label>
+          <textarea id="interests" placeholder="e.g., AI, Robotics, Cloud"></textarea>
         </div>
         <div>
-          <label>Country</label>
-          <select id="country">
-            <option value="">Select country</option>
-            <option>Afghanistan</option>
-            <option>Albania</option>
-            <option>Algeria</option>
-            <option>Andorra</option>
-            <option>Angola</option>
-            <option>Antigua and Barbuda</option>
-            <option>Argentina</option>
-            <option>Armenia</option>
-            <option>Australia</option>
-            <option>Austria</option>
-            <option>Azerbaijan</option>
-            <option>Bahamas</option>
-            <option>Bahrain</option>
-            <option>Bangladesh</option>
-            <option>Barbados</option>
-            <option>Belarus</option>
-            <option>Belgium</option>
-            <option>Belize</option>
-            <option>Benin</option>
-            <option>Bhutan</option>
-            <option>Bolivia</option>
-            <option>Bosnia and Herzegovina</option>
-            <option>Botswana</option>
-            <option>Brazil</option>
-            <option>Brunei</option>
-            <option>Bulgaria</option>
-            <option>Burkina Faso</option>
-            <option>Burundi</option>
-            <option>Cabo Verde</option>
-            <option>Cambodia</option>
-            <option>Cameroon</option>
-            <option>Canada</option>
-            <option>Central African Republic</option>
-            <option>Chad</option>
-            <option>Chile</option>
-            <option>China</option>
-            <option>Colombia</option>
-            <option>Comoros</option>
-            <option>Congo, Democratic Republic of the</option>
-            <option>Congo, Republic of the</option>
-            <option>Costa Rica</option>
-            <option>Croatia</option>
-            <option>Cuba</option>
-            <option>Cyprus</option>
-            <option>Czechia</option>
-            <option>Denmark</option>
-            <option>Djibouti</option>
-            <option>Dominica</option>
-            <option>Dominican Republic</option>
-            <option>Ecuador</option>
-            <option>Egypt</option>
-            <option>El Salvador</option>
-            <option>Equatorial Guinea</option>
-            <option>Eritrea</option>
-            <option>Estonia</option>
-            <option>Eswatini</option>
-            <option>Ethiopia</option>
-            <option>Fiji</option>
-            <option>Finland</option>
-            <option>France</option>
-            <option>Gabon</option>
-            <option>Gambia</option>
-            <option>Georgia</option>
-            <option>Germany</option>
-            <option>Ghana</option>
-            <option>Greece</option>
-            <option>Grenada</option>
-            <option>Guatemala</option>
-            <option>Guinea</option>
-            <option>Guinea-Bissau</option>
-            <option>Guyana</option>
-            <option>Haiti</option>
-            <option>Honduras</option>
-            <option>Hungary</option>
-            <option>Iceland</option>
-            <option>India</option>
-            <option>Indonesia</option>
-            <option>Iran</option>
-            <option>Iraq</option>
-            <option>Ireland</option>
-            <option>Israel</option>
-            <option>Italy</option>
-            <option>Jamaica</option>
-            <option>Japan</option>
-            <option>Jordan</option>
-            <option>Kazakhstan</option>
-            <option>Kenya</option>
-            <option>Kiribati</option>
-            <option>Korea, North</option>
-            <option>Korea, South</option>
-            <option>Kosovo</option>
-            <option>Kuwait</option>
-            <option>Kyrgyzstan</option>
-            <option>Laos</option>
-            <option>Latvia</option>
-            <option>Lebanon</option>
-            <option>Lesotho</option>
-            <option>Liberia</option>
-            <option>Libya</option>
-            <option>Liechtenstein</option>
-            <option>Lithuania</option>
-            <option>Luxembourg</option>
-            <option>Madagascar</option>
-            <option>Malawi</option>
-            <option>Malaysia</option>
-            <option>Maldives</option>
-            <option>Mali</option>
-            <option>Malta</option>
-            <option>Marshall Islands</option>
-            <option>Mauritania</option>
-            <option>Mauritius</option>
-            <option>Mexico</option>
-            <option>Micronesia</option>
-            <option>Moldova</option>
-            <option>Monaco</option>
-            <option>Mongolia</option>
-            <option>Montenegro</option>
-            <option>Morocco</option>
-            <option>Mozambique</option>
-            <option>Myanmar</option>
-            <option>Namibia</option>
-            <option>Nauru</option>
-            <option>Nepal</option>
-            <option>Netherlands</option>
-            <option>New Zealand</option>
-            <option>Nicaragua</option>
-            <option>Niger</option>
-            <option>Nigeria</option>
-            <option>North Macedonia</option>
-            <option>Norway</option>
-            <option>Oman</option>
-            <option>Pakistan</option>
-            <option>Palau</option>
-            <option>Panama</option>
-            <option>Papua New Guinea</option>
-            <option>Paraguay</option>
-            <option>Peru</option>
-            <option>Philippines</option>
-            <option>Poland</option>
-            <option>Portugal</option>
-            <option>Qatar</option>
-            <option>Romania</option>
-            <option>Russia</option>
-            <option>Rwanda</option>
-            <option>Saint Kitts and Nevis</option>
-            <option>Saint Lucia</option>
-            <option>Saint Vincent and the Grenadines</option>
-            <option>Samoa</option>
-            <option>San Marino</option>
-            <option>Sao Tome and Principe</option>
-            <option>Saudi Arabia</option>
-            <option>Senegal</option>
-            <option>Serbia</option>
-            <option>Seychelles</option>
-            <option>Sierra Leone</option>
-            <option>Singapore</option>
-            <option>Slovakia</option>
-            <option>Slovenia</option>
-            <option>Solomon Islands</option>
-            <option>Somalia</option>
-            <option>South Africa</option>
-            <option>South Sudan</option>
-            <option>Spain</option>
-            <option>Sri Lanka</option>
-            <option>Sudan</option>
-            <option>Suriname</option>
-            <option>Sweden</option>
-            <option>Switzerland</option>
-            <option>Syria</option>
-            <option>Taiwan</option>
-            <option>Tajikistan</option>
-            <option>Tanzania</option>
-            <option>Thailand</option>
-            <option>Timor-Leste</option>
-            <option>Togo</option>
-            <option>Tonga</option>
-            <option>Trinidad and Tobago</option>
-            <option>Tunisia</option>
-            <option>Turkey</option>
-            <option>Turkmenistan</option>
-            <option>Tuvalu</option>
-            <option>Uganda</option>
-            <option>Ukraine</option>
-            <option>United Arab Emirates</option>
-            <option>United Kingdom</option>
-            <option>United States</option>
-            <option>Uruguay</option>
-            <option>Uzbekistan</option>
-            <option>Vanuatu</option>
-            <option>Vatican City</option>
-            <option>Venezuela</option>
-            <option>Vietnam</option>
-            <option>Yemen</option>
-            <option>Zambia</option>
-            <option>Zimbabwe</option>
-          </select>
+          <label>Teams / Contact (optional)</label>
+          <input id="teams" placeholder="yourname@yoobee.ac.nz" />
         </div>
+        <div class="row">
+          <button class="btn acc" id="btn-register">Save & Start</button>
+          <button class="btn ghost" id="btn-restore">I already have a code</button>
+        </div>
+        <div id="status" class="spacer"></div>
       </div>
 
-      <div class="row">
+      <div class="card hidden" id="screen-swipe">
         <div>
-          <label>Background (e.g., Nursing, IT, Design)</label>
-          <input id="background" />
+          <b>Welcome, <span id="me-name">—</span></b>
+          <span class="small muted right">Code: <span id="me-code">—</span></span>
         </div>
-        <div>
-          <label>Teams Email (revealed only on match)</label>
-          <input id="teams" placeholder="your.name@yoobee.ac.nz" />
+        <hr/>
+        <div class="swipe-card" id="candidate-card">
+          <div id="candidate-empty" class="center">
+            <div class="muted">No more candidates right now. We’ll keep checking for new matches…</div>
+          </div>
+          <div id="candidate" class="hidden">
+            <div class="who"><span id="c-name">—</span></div>
+            <div class="small muted" id="c-meta">—</div>
+            <div class="pill" id="c-tags"></div>
+          </div>
         </div>
-      </div>
-
-      <label>Interests (comma-separated)</label>
-      <input id="interests" placeholder="health-tech, UX, data viz" />
-
-      <div class="actions">
-        <button class="btn primary" id="btn-start">Save & Start Swiping</button>
-        <button class="btn ghost" id="btn-restore">I have a Join Code</button>
-      </div>
-      <p class="hint">We store a one-time <b>Join Code</b> in your browser. If you switch devices, use “I have a Join Code”.</p>
-      <div id="restore-form" style="display:none;margin-top:8px">
-        <label>Join Code</label>
-        <input id="restore-code" placeholder="e.g., Q7M3KX" />
         <div class="actions">
-          <button class="btn" id="btn-restore-do">Restore Session</button>
+          <button class="btn" id="btn-left">👎 Pass</button>
+          <button class="btn acc" id="btn-right">👍 Connect</button>
+          <button class="btn ghost" id="btn-refresh">↻ Refresh matches</button>
         </div>
-      </div>
-      <div class="hr"></div>
-      <div class="muted">Privacy: until you match, others only see your country, background, and interests. Names, campuses, and email unlock after a mutual 👍.</div>
-    </div>
-
-    <div id="screen-swipe" style="display:none">
-      <div class="swipe-head">
-        <h3>Swipe candidates</h3>
-      </div>
-      <div class="session-bar" id="session-bar">
-        <div>
-          <div class="muted" style="margin-bottom:4px;font-size:13px">Your Join Code</div>
-          <div class="code" id="session-code">—</div>
+        <div class="row">
+          <button class="btn ghost" id="btn-logout">Sign out</button>
+          <div id="status2" class="small muted center"></div>
         </div>
-        <div class="session-actions">
-          <button class="btn ghost" id="btn-copy">Copy Code</button>
-          <button class="btn" id="btn-logout">Log out &amp; reset</button>
-        </div>
-      </div>
-      <div class="match-card" id="match-card">
-        <div class="match-head">
-          <div>
-            <h3>Your matches</h3>
-            <div class="match-limit" id="match-limit-status">Up to 3 matches every 24 hours.</div>
-          </div>
-          <div class="match-head-actions">
-            <button class="btn ghost" id="btn-match-refresh" data-default-text="Refresh matches" data-loading-text="Refreshing…">Refresh matches</button>
-          </div>
-        </div>
-        <div id="match-alert" class="match-list"></div>
-      </div>
-      <div class="deck">
-        <div class="profile center loader-wrap" id="loading" style="display:none">
-          <div class="loader"></div>
-          <div class="muted">Loading candidates…</div>
-        </div>
-        <div class="profile" id="card" style="display:none">
-          <div class="muted">Candidate</div>
-          <h2 id="p-name" style="margin:6px 0 0"></h2>
-          <div id="p-campus" class="tag-list"></div>
-          <div id="p-bg" style="margin-top:6px"></div>
-          <div class="badges" id="p-interests"></div>
-          <div class="hr"></div>
-          <div class="hint">Icebreakers: What brought you to this field? Favourite local study spot? One fun fact?</div>
-        </div>
-        <div class="profile center" id="empty" style="display:none" data-default-title="No more candidates right now" data-default-body="Hang tight; others are still joining. You can revisit in a few seconds." data-limit-title="Match limit reached" data-limit-body="You hit 3 matches. New suggestions unlock once 24 hours have passed.">
-          <div>
-            <h3>No more candidates right now</h3>
-            <p class="muted">Hang tight; others are still joining. You can revisit in a few seconds.</p>
-            <div class="actions center" style="justify-content:center">
-              <button class="btn" id="btn-refresh" data-default-text="Refresh" data-limit-text="Come back later">Refresh</button>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="actions" id="swipe-actions" style="display:none">
-        <button class="btn ghost" id="btn-no">👎 Pass</button>
-        <button class="btn primary" id="btn-yes">👍 Connect</button>
       </div>
     </div>
 
+    <!-- RIGHT: Matches -->
+    <div class="card col">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <h2>Your Matches</h2>
+        <div class="small muted" id="last-sync">Last sync: —</div>
+      </div>
+      <div id="matches" class="matches"></div>
+    </div>
   </div>
-</div>
 
 <script>
-const API = "https://script.google.com/macros/s/AKfycbxflqP3IsvUZVC5AZbIr470JkBEXfcYTrxHkBRlpIq7AI3kUR2yQPB8tWm2W9ms03ME/exec";
-let joinCode = localStorage.getItem("joinCode") || null;
-let myProfile = null;
-let deck = [];
+/* ==========================
+   CONFIG
+========================== */
+const BASE_URL = 'YOUR_DEPLOYMENT_URL_HERE'; // <-- set your Apps Script web app URL
+
+/* ==========================
+   STATE
+========================== */
+let joinCode = null;
+let meProfile = null;
+let deck = [];           // candidate queue
+let swiped = new Set();  // in-session memory
+let matchList = [];      // [{ts, partner:{...}}]
 let current = null;
-const MATCH_LIMIT = 3;
-const MATCH_WINDOW_MS = 24 * 60 * 60 * 1000;
-const MATCH_STORAGE_KEY = 'matchHistory';
-const MATCH_HISTORY_MAX = 50;
-function show(id){ document.getElementById(id).style.display='block'; }
-function hide(id){ document.getElementById(id).style.display='none'; }
-function pills(parent, arr){
-  parent.innerHTML='';
-  (arr||[]).forEach(v=>{
-    const span=document.createElement('span');
-    span.className='pill'; span.textContent=v;
-    parent.appendChild(span);
-  });
+
+// polling
+let matchPollTimer = null;
+const MATCH_POLL_MS = 15000;
+
+/* ==========================
+   DOM helpers
+========================== */
+const el = id => document.getElementById(id);
+const show = id => el(id).classList.remove('hidden');
+const hide = id => el(id).classList.add('hidden');
+function setStatus(msg, where='status'){ el(where).textContent = msg || ''; }
+
+/* ==========================
+   STORAGE
+========================== */
+function saveSession(){
+  localStorage.setItem('yc_code', joinCode || '');
+  localStorage.setItem('yc_profile', JSON.stringify(meProfile||{}));
+}
+function loadSession(){
+  joinCode = localStorage.getItem('yc_code') || '';
+  try{ meProfile = JSON.parse(localStorage.getItem('yc_profile')||'{}'); }catch{ meProfile = {}; }
+}
+function clearSession(){
+  localStorage.removeItem('yc_code');
+  localStorage.removeItem('yc_profile');
 }
 
-function maskName(name){
-  const value = (name || '').trim();
-  if(!value) return 'Student';
-  if(value.length <= 2) return value.padEnd(2, '•');
-  return value.slice(0, 2) + '•••';
-}
-
-function safeParse(value){
-  if(!value) return null;
-  try{
-    return JSON.parse(value);
-  }catch(err){
-    return null;
-  }
-}
-
-function getMatchStore(){
-  const parsed = safeParse(localStorage.getItem(MATCH_STORAGE_KEY));
-  return parsed && typeof parsed === 'object' ? parsed : {};
-}
-
-function getMatchHistory(){
-  if(!joinCode) return [];
-  const store = getMatchStore();
-  const history = store[joinCode];
-  return Array.isArray(history) ? history : [];
-}
-
-function saveMatchHistory(history){
-  if(!joinCode) return;
-  const store = getMatchStore();
-  store[joinCode] = Array.isArray(history) ? history.slice(0, MATCH_HISTORY_MAX) : [];
-  localStorage.setItem(MATCH_STORAGE_KEY, JSON.stringify(store));
-}
-
-function recentMatches(list){
-  const entries = Array.isArray(list) ? list : [];
-  const cutoff = Date.now() - MATCH_WINDOW_MS;
-  return entries.filter(entry => entry && typeof entry.ts === 'number' && entry.ts > cutoff);
-}
-
-function normalizeInterests(value){
-  if(Array.isArray(value)){
-    return value.map(v => typeof v === 'string' ? v.trim() : String(v || '').trim()).filter(Boolean);
-  }
-  if(typeof value === 'string'){
-    return value.split(/[,;]+/).map(v => v.trim()).filter(Boolean);
-  }
-  return [];
-}
-
-function normalizePartner(source){
-  const data = source || {};
-  return {
-    name: data.name || data.fullName || data.displayName || 'Match',
-    campus: data.campus || data.campusName || '',
-    country: data.country || data.countryName || '',
-    background: data.background || data.program || data.study || data.major || '',
-    interests: normalizeInterests(data.interests || data.tags || data.skills),
-    teams: data.teams || data.email || data.contact || data.handle || ''
-  };
-}
-
-function buildMatchEntry(raw, fallbackTs){
-  if(!raw) return null;
-  const partnerSource = raw.partner || raw.profile || raw.student || raw.user || raw.target || raw;
-  const numericTsCandidates = [raw.ts, raw.timestamp, raw.time, raw.matchedAt, raw.createdAt, raw.updatedAt];
-  let ts = numericTsCandidates.find(v => typeof v === 'number' && Number.isFinite(v));
-  if(ts === undefined){
-    const stringTsCandidates = [raw.timestamp, raw.time, raw.matchedAt, raw.date, raw.createdAt, raw.updatedAt];
-    for(const candidate of stringTsCandidates){
-      if(typeof candidate === 'string' && candidate){
-        const parsed = Date.parse(candidate);
-        if(!Number.isNaN(parsed)){ ts = parsed; break; }
-      }
-    }
-  }
-  if(ts === undefined){
-    ts = typeof fallbackTs === 'number' && Number.isFinite(fallbackTs) ? fallbackTs : Date.now();
-  }
-  return { ts, partner: normalizePartner(partnerSource) };
-}
-
-function normalizeMatchList(list){
-  return (Array.isArray(list) ? list : [])
-    .map(entry => buildMatchEntry(entry, entry && entry.ts))
-    .filter(Boolean);
-}
-
-function mergeMatchHistories(existing, incoming){
-  const combined = normalizeMatchList([
-    ...(Array.isArray(existing) ? existing : []),
-    ...(Array.isArray(incoming) ? incoming : [])
-  ]);
-  const deduped = new Map();
-  combined.forEach(entry => {
-    const partner = entry.partner || {};
-    const key = [
-      (partner.teams || '').toLowerCase(),
-      (partner.name || '').toLowerCase(),
-      (partner.campus || '').toLowerCase(),
-      (partner.country || '').toLowerCase(),
-      (partner.background || '').toLowerCase()
-    ].join('|');
-    const current = deduped.get(key);
-    if(!current || current.ts < entry.ts){
-      deduped.set(key, entry);
-    }
-  });
-  return Array.from(deduped.values()).sort((a,b)=>b.ts - a.ts).slice(0, MATCH_HISTORY_MAX);
-}
-
-function extractMatchesFromResponse(res){
-  if(!res || typeof res !== 'object') return [];
-  if(Array.isArray(res.matches)) return res.matches;
-  if(res.profile && Array.isArray(res.profile.matches)) return res.profile.matches;
-  if(Array.isArray(res.matchHistory)) return res.matchHistory;
-  if(res.data && Array.isArray(res.data.matches)) return res.data.matches;
-  return [];
-}
-
-function applyServerMatches(rawMatches, options){
-  if(!joinCode) return;
-  const incoming = normalizeMatchList(rawMatches);
-  const shouldReplace = options && options.replace;
-  if(shouldReplace){
-    const canonical = mergeMatchHistories([], incoming);
-    saveMatchHistory(canonical);
-    refreshMatchUI(canonical);
-    return;
-  }
-  const merged = mergeMatchHistories(getMatchHistory(), incoming);
-  saveMatchHistory(merged);
-  refreshMatchUI(merged);
-}
-
-async function syncMatchesFromServer(){
-  if(!joinCode) return;
-  let res = null;
-  try{
-    res = await apiGet({ action:'matches', code:joinCode });
-  }catch(err){
-    console.warn('matches action unavailable, falling back to restore', err);
-  }
-  if(!res || res.error){
-    try{
-      res = await apiGet({ action:'restore', code:joinCode });
-    }catch(err){
-      console.error('Unable to refresh matches from server', err);
-      throw err;
-    }
-  }
-  if(!res) return;
-  if(res.error){
-    throw new Error(res.error);
-  }
-  if(res.ok === false){
-    throw new Error(res.error || 'Unable to refresh matches.');
-  }
-  if(res.profile){
-    myProfile = res.profile;
-  }
-  const matches = extractMatchesFromResponse(res);
-  applyServerMatches(matches, { replace:true });
-}
-
-async function manualMatchRefresh(){
-  const button = document.getElementById('btn-match-refresh');
-  if(button){
-    const defaultText = button.dataset.defaultText || button.textContent || 'Refresh matches';
-    const loadingText = button.dataset.loadingText || 'Refreshing…';
-    button.dataset.defaultText = defaultText;
-    button.dataset.loading = '1';
-    button.disabled = true;
-    button.textContent = loadingText;
-  }
-  try{
-    if(!joinCode){
-      refreshMatchUI([]);
-      return;
-    }
-    await syncMatchesFromServer();
-  }catch(err){
-    console.error('Manual match refresh failed', err);
-    alert(err && err.message ? err.message : 'Unable to refresh matches. Please try again.');
-  }finally{
-    if(button){
-      delete button.dataset.loading;
-      const text = button.dataset.defaultText || 'Refresh matches';
-      button.textContent = text;
-      button.disabled = !joinCode;
-    }
-  }
-}
-
-function renderMatchHistory(history){
-  const container = document.getElementById('match-alert');
-  if(!container) return;
-  container.innerHTML = '';
-  if(!joinCode){
-    const empty = document.createElement('div');
-    empty.className = 'muted';
-    empty.textContent = 'Sign in to view your matches.';
-    container.appendChild(empty);
-    return;
-  }
-  const entries = Array.isArray(history) ? history : getMatchHistory();
-  if(!entries || entries.length === 0){
-    const empty = document.createElement('div');
-    empty.className = 'muted';
-    empty.textContent = 'No matches yet. Mutual 👍 will reveal full details here.';
-    container.appendChild(empty);
-    return;
-  }
-  const sorted = [...entries].sort((a,b)=>b.ts - a.ts);
-  sorted.forEach(entry => {
-    if(!entry || !entry.partner) return;
-    const partner = entry.partner;
-    const item = document.createElement('div');
-    item.className = 'match-entry';
-
-    const title = document.createElement('div');
-    title.className = 'match-entry-title';
-    const nameEl = document.createElement('span');
-    nameEl.textContent = partner.name || 'Match';
-    const timeEl = document.createElement('span');
-    timeEl.className = 'match-entry-time';
-    timeEl.textContent = new Date(entry.ts).toLocaleString();
-    title.appendChild(nameEl);
-    title.appendChild(timeEl);
-    item.appendChild(title);
-
-    const metaValues = [partner.campus, partner.country].filter(Boolean);
-    if(metaValues.length){
-      const meta = document.createElement('div');
-      meta.className = 'match-entry-meta';
-      meta.textContent = metaValues.join(' • ');
-      item.appendChild(meta);
-    }
-
-    if(partner.background){
-      const bg = document.createElement('div');
-      bg.className = 'match-entry-bg';
-      bg.textContent = `Background: ${partner.background}`;
-      item.appendChild(bg);
-    }
-
-    const interests = Array.isArray(partner.interests)
-      ? partner.interests
-      : (typeof partner.interests === 'string'
-          ? partner.interests.split(',').map(v=>v.trim()).filter(Boolean)
-          : []);
-    if(interests.length){
-      const wrap = document.createElement('div');
-      wrap.className = 'badges';
-      pills(wrap, interests);
-      item.appendChild(wrap);
-    }
-
-    if(partner.teams){
-      const actions = document.createElement('div');
-      actions.className = 'match-entry-actions';
-      const label = document.createElement('span');
-      label.textContent = 'Connect via email or Teams: ';
-      const emailLink = document.createElement('a');
-      emailLink.href = `mailto:${partner.teams}`;
-      emailLink.textContent = partner.teams;
-      actions.appendChild(label);
-      actions.appendChild(emailLink);
-      item.appendChild(actions);
-    }else{
-      const fallback = document.createElement('div');
-      fallback.className = 'hint';
-      fallback.textContent = 'Ask your facilitator to share contact details.';
-      item.appendChild(fallback);
-    }
-
-    container.appendChild(item);
-  });
-}
-
-function updateMatchLimitUI(recent){
-  const status = document.getElementById('match-limit-status');
-  if(!status) return;
-  if(!joinCode){
-    status.textContent = `Up to ${MATCH_LIMIT} matches every 24 hours.`;
-    return;
-  }
-  const list = Array.isArray(recent) ? recent : recentMatches(getMatchHistory());
-  const remaining = Math.max(0, MATCH_LIMIT - list.length);
-  if(remaining > 0){
-    status.textContent = `${remaining} match${remaining === 1 ? '' : 'es'} remaining in this 24-hour window.`;
-  }else if(list.length){
-    const soonestExpiry = Math.min(...list.map(entry => entry.ts)) + MATCH_WINDOW_MS;
-    const nextDate = new Date(soonestExpiry);
-    status.textContent = `Match limit reached. New suggestions after ${nextDate.toLocaleString([], { hour: '2-digit', minute: '2-digit' })}.`;
-  }else{
-    status.textContent = `Up to ${MATCH_LIMIT} matches every 24 hours.`;
-  }
-}
-
-function updateEmptyState(limitActive){
-  const empty = document.getElementById('empty');
-  if(!empty) return;
-  const titleEl = empty.querySelector('h3');
-  const bodyEl = empty.querySelector('p');
-  const refreshBtn = document.getElementById('btn-refresh');
-  if(limitActive){
-    if(titleEl) titleEl.textContent = empty.dataset.limitTitle || 'Match limit reached';
-    if(bodyEl) bodyEl.textContent = empty.dataset.limitBody || 'You hit the daily match limit. Check back later.';
-    if(refreshBtn){
-      refreshBtn.disabled = true;
-      refreshBtn.textContent = refreshBtn.dataset.limitText || 'Come back later';
-    }
-  }else{
-    if(titleEl) titleEl.textContent = empty.dataset.defaultTitle || 'No more candidates right now';
-    if(bodyEl) bodyEl.textContent = empty.dataset.defaultBody || 'Hang tight; others are still joining. You can revisit in a few seconds.';
-    if(refreshBtn){
-      refreshBtn.disabled = false;
-      refreshBtn.textContent = refreshBtn.dataset.defaultText || 'Refresh';
-    }
-  }
-}
-
-function refreshMatchUI(history){
-  const provided = Array.isArray(history) ? history : undefined;
-  const refreshBtn = document.getElementById('btn-match-refresh');
-  if(refreshBtn){
-    const defaultText = refreshBtn.dataset.defaultText || refreshBtn.textContent || 'Refresh matches';
-    if(!refreshBtn.dataset.defaultText){
-      refreshBtn.dataset.defaultText = defaultText;
-    }
-    if(refreshBtn.dataset.loading === '1'){
-      refreshBtn.disabled = true;
-    }else{
-      refreshBtn.disabled = !joinCode;
-      refreshBtn.textContent = refreshBtn.dataset.defaultText || defaultText;
-    }
-  }
-  renderMatchHistory(provided);
-  if(!joinCode){
-    updateMatchLimitUI([]);
-    updateEmptyState(false);
-    return;
-  }
-  const list = provided !== undefined ? provided : getMatchHistory();
-  const recent = recentMatches(list);
-  updateMatchLimitUI(recent);
-  updateEmptyState(recent.length >= MATCH_LIMIT);
-}
-
-function matchesRemaining(){
-  if(!joinCode){
-    updateMatchLimitUI([]);
-    updateEmptyState(false);
-    return MATCH_LIMIT;
-  }
-  const history = getMatchHistory();
-  const recent = recentMatches(history);
-  const remaining = Math.max(0, MATCH_LIMIT - recent.length);
-  updateMatchLimitUI(recent);
-  updateEmptyState(recent.length >= MATCH_LIMIT);
-  return remaining;
-}
-
-function recordMatch(partner){
-  if(!joinCode) return;
-  const merged = mergeMatchHistories(getMatchHistory(), [{ partner, ts: Date.now() }]);
-  saveMatchHistory(merged);
-  refreshMatchUI(merged);
-}
-
-async function apiPost(body){
-  const r = await fetch(API, {
-    method:'POST',
-    headers:{
-      'Content-Type':'application/json'
-    },
-    body:JSON.stringify(body),
-    cache:'no-store'
-  });
-  return await r.json();
-}
+/* ==========================
+   API
+========================== */
 async function apiGet(params){
-  const query = new URLSearchParams(params || {});
-  query.set('_', Date.now().toString());
-  const url = API + "?" + query.toString();
-  const r = await fetch(url, { cache:'no-store' });
-  return await r.json();
+  const url = new URL(BASE_URL);
+  Object.entries(params).forEach(([k,v])=> url.searchParams.set(k, v));
+  const r = await fetch(url.toString(), { method:'GET', headers: { 'Cache-Control':'no-cache' }});
+  return r.json();
 }
-
-function renderCard(p){
-  if(!p){ hide('card'); show('empty'); hide('swipe-actions'); return; }
-  show('card'); hide('empty'); show('swipe-actions');
-  document.getElementById('p-name').textContent = maskName(p.name);
-  const campusEl = document.getElementById('p-campus');
-  campusEl.innerHTML = '';
-  [p.country].filter(Boolean).forEach(value => {
-    const tag = document.createElement('span');
-    tag.className = 'tag';
-    tag.textContent = value;
-    campusEl.appendChild(tag);
+async function apiPost(body){
+  const r = await fetch(BASE_URL, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(body)
   });
-  campusEl.style.display = campusEl.childElementCount ? 'flex' : 'none';
-  document.getElementById('p-bg').textContent = p.background ? "Background: " + p.background : '';
-  pills(document.getElementById('p-interests'), p.interests || []);
+  return r.json();
 }
 
-function updateSessionUI(){
-  const bar = document.getElementById('session-bar');
-  const codeEl = document.getElementById('session-code');
-  if(joinCode){
-    codeEl.textContent = joinCode;
-    bar.style.display = 'flex';
-  }else{
-    codeEl.textContent = '—';
-    bar.style.display = 'none';
-  }
-}
-
-async function copyJoinCode(){
+/* ==========================
+   MATCH POLLING
+========================== */
+function startMatchPolling(){
+  stopMatchPolling();
   if(!joinCode) return;
-  const copyBtn = document.getElementById('btn-copy');
-  const original = copyBtn.textContent;
-  try{
-    if(navigator.clipboard && navigator.clipboard.writeText){
-      await navigator.clipboard.writeText(joinCode);
-    }else{
-      throw new Error('Clipboard API unavailable');
+  const tick = async () => {
+    if(document.visibilityState === 'visible' && joinCode){
+      try { await syncMatchesFromServer(); } catch(_e){}
     }
-    copyBtn.textContent = 'Copied!';
-  }catch(err){
-    window.prompt('Copy your Join Code', joinCode);
-    copyBtn.textContent = 'Copy Code';
-    return;
-  }
-  setTimeout(()=>{ copyBtn.textContent = original; }, 1600);
+  };
+  matchPollTimer = setInterval(tick, MATCH_POLL_MS);
+  setTimeout(tick, 1000);
 }
-
-function logout(){
-  localStorage.removeItem('joinCode');
-  joinCode = null;
-  myProfile = null;
-  deck = [];
-  current = null;
-  document.getElementById('restore-code').value = '';
-  document.getElementById('btn-copy').textContent = 'Copy Code';
-  hide('screen-swipe');
-  show('screen-profile');
-  hide('restore-form');
-  updateSessionUI();
-  refreshMatchUI();
+function stopMatchPolling(){
+  if(matchPollTimer){ clearInterval(matchPollTimer); matchPollTimer = null; }
 }
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState === 'visible' && joinCode){
+    syncMatchesFromServer().catch(()=>{});
+  }
+});
 
-function setLoading(state){
-  const loader = document.getElementById('loading');
-  if(state){
-    loader.style.display = 'flex';
-    hide('card');
-    hide('empty');
-    hide('swipe-actions');
-  }else{
-    loader.style.display = 'none';
-  }
-}
-
-async function nextCard(){
-  if(matchesRemaining() <= 0){
-    deck = [];
-    current = null;
-    renderCard(null);
-    return;
-  }
-  if(deck.length===0){
-    setLoading(true);
-    try{
-      const res = await apiGet({ action:'candidates', code:joinCode });
-      deck = res.candidates || [];
-    }catch(err){
-      console.error(err);
-      alert('Unable to load candidates. Please try again.');
-      renderCard(null);
-      return;
-    }finally{
-      setLoading(false);
-    }
-  }
-  current = deck.shift() || null;
-  renderCard(current);
-}
-
-async function onSwipe(dir){
-  if(!current) return;
-  const res = await apiPost({ action:'swipe', code:joinCode, target:current.code, dir });
-  if(res.matched && res.partner){
-    recordMatch(res.partner);
-  }
-  const extraMatches = extractMatchesFromResponse(res);
-  if(extraMatches.length){
-    applyServerMatches(extraMatches);
-  }
-  await nextCard();
-}
-
+/* ==========================
+   FLOWS
+========================== */
 async function saveProfile(){
-  const name = document.getElementById('name').value.trim();
-  const campus = document.getElementById('campus').value.trim();
-  const country = document.getElementById('country').value.trim();
-  const background = document.getElementById('background').value.trim();
-  const teams = document.getElementById('teams').value.trim();
-  const interests = document.getElementById('interests').value.split(',').map(s=>s.trim()).filter(Boolean);
-
-  if(!name || !campus || !country || !background){ alert("Please complete Name, Campus, Country, and Background."); return; }
-
+  const name = el('name').value.trim();
+  const campus = el('campus').value.trim();
+  const country = el('country').value.trim();
+  const background = el('background').value.trim();
+  const interests = el('interests').value.trim();
+  const teams = el('teams').value.trim();
+  setStatus('Saving…');
   const res = await apiPost({ action:'register', name, campus, country, background, interests, teams });
-  if(!res.ok){ alert(res.error || "Error"); return; }
+  if(!res.ok){ setStatus('Error: ' + res.error); return; }
   joinCode = res.code;
-  localStorage.setItem('joinCode', joinCode);
-  myProfile = res.profile;
-  updateSessionUI();
-  const matches = extractMatchesFromResponse(res);
-  if(matches.length){
-    applyServerMatches(matches, { replace:true });
-  }else{
-    refreshMatchUI([]);
-  }
-
+  meProfile = res.profile||{};
+  saveSession();
+  el('me-name').textContent = meProfile.name || name;
+  el('me-code').textContent = joinCode;
+  setStatus('');
   hide('screen-profile'); show('screen-swipe');
+  startMatchPolling();
+  await fetchCandidates();
+  await syncMatchesFromServer(); // initial hydrate
   await nextCard();
 }
 
 async function restore(){
-  const code = document.getElementById('restore-code').value.trim();
-  if(!code){ alert('Enter your Join Code'); return; }
+  loadSession();
+  const code = prompt('Enter your join code:', joinCode || '');
+  if(!code){ return; }
+  setStatus('Restoring…');
   const res = await apiGet({ action:'restore', code });
-  if(!res.ok){ alert(res.error || 'Invalid code'); return; }
-  joinCode = code; localStorage.setItem('joinCode', joinCode);
-  myProfile = res.profile;
-  updateSessionUI();
-  const matches = extractMatchesFromResponse(res);
-  if(matches.length){
-    applyServerMatches(matches, { replace:true });
-  }else{
-    refreshMatchUI();
-  }
+  if(!res.ok){ setStatus('Error: ' + res.error); return; }
+  joinCode = code.toUpperCase();
+  meProfile = res.profile||{};
+  matchList = Array.isArray(res.matches)? res.matches : [];
+  saveSession();
+  el('me-name').textContent = meProfile.name || '—';
+  el('me-code').textContent = joinCode;
+  setStatus('');
   hide('screen-profile'); show('screen-swipe');
+  startMatchPolling();
+  renderMatches();
+  await fetchCandidates();
   await nextCard();
 }
 
-document.getElementById('btn-start').onclick = saveProfile;
-document.getElementById('btn-no').onclick = ()=>onSwipe('left');
-document.getElementById('btn-yes').onclick = ()=>onSwipe('right');
-document.getElementById('btn-match-refresh').onclick = manualMatchRefresh;
-document.getElementById('btn-refresh').onclick = nextCard;
-document.getElementById('btn-copy').onclick = copyJoinCode;
-document.getElementById('btn-logout').onclick = ()=>{
-  if(confirm('Log out and clear this device\'s session?')){
-    logout();
+function logout(){
+  stopMatchPolling();
+  clearSession();
+  joinCode = null;
+  meProfile = null;
+  deck = []; swiped.clear(); matchList = []; current=null;
+  el('matches').innerHTML = '';
+  hide('screen-swipe'); show('screen-profile');
+  setStatus('', 'status2');
+}
+
+/* ==========================
+   CANDIDATES & SWIPES
+========================== */
+async function fetchCandidates(){
+  if(!joinCode) return;
+  setStatus('Loading candidates…','status2');
+  const res = await apiGet({ action:'candidates', code: joinCode });
+  if(!res.ok){ setStatus('Error: ' + res.error, 'status2'); return; }
+  // server already filters swiped/matched; still dedupe on client
+  const seen = new Set(deck.map(d=>d.code));
+  res.candidates.forEach(c=>{ if(!seen.has(c.code) && c.code!==joinCode) deck.push(c); });
+  setStatus('', 'status2');
+}
+
+async function onSwipe(dir){
+  if(!current) return;
+  const target = current.code;
+  swiped.add(target);
+  const res = await apiPost({ action:'swipe', code: joinCode, target, dir });
+  if(res.matched && res.partner){
+    recordMatch(res.partner);
   }
-};
+  await nextCard();
+  // pick up any pairs created while we were idle
+  try { await syncMatchesFromServer(); } catch(_e){}
+}
 
-document.getElementById('btn-restore').onclick = ()=>show('restore-form');
-document.getElementById('btn-restore-do').onclick = restore;
+async function nextCard(){
+  // find the next candidate that isn't me and isn't already matched
+  const matchedCodes = new Set(matchList.map(m=> (m.partner && m.partner.code) ? m.partner.code : null));
+  let next = null;
+  while(deck.length){
+    const c = deck.shift();
+    if(!c || c.code===joinCode) continue;
+    if(swiped.has(c.code)) continue;
+    if(matchedCodes.has(c.code)) continue;
+    next = c; break;
+  }
+  current = next;
+  renderCandidate();
+  if(!current){
+    // try to refill once
+    await fetchCandidates();
+    if(deck.length){ return nextCard(); }
+  }
+}
 
-// Auto-restore if joinCode exists
-(async function boot(){
-  updateSessionUI();
-  refreshMatchUI(joinCode ? getMatchHistory() : []);
-  if(joinCode){
-    const res = await apiGet({ action:'restore', code:joinCode });
-    if(res.ok){
-      myProfile = res.profile;
-      const matches = extractMatchesFromResponse(res);
-      if(matches.length){
-        applyServerMatches(matches, { replace:true });
-      }else{
-        refreshMatchUI();
-      }
-      hide('screen-profile'); show('screen-swipe');
-      await nextCard();
-    }else{
-      logout();
-      alert('Saved session expired or was not found. Please enter a Join Code or create a new profile.');
+/* ==========================
+   RENDER
+========================== */
+function renderCandidate(){
+  const empty = el('candidate-empty');
+  const block = el('candidate');
+  if(!current){
+    show('candidate-empty'); hide('candidate');
+    el('c-name').textContent = '';
+    el('c-meta').textContent = '';
+    el('c-tags').innerHTML = '';
+    return;
+  }
+  hide('candidate-empty'); show('candidate');
+  el('c-name').textContent = current.name || '(No name)';
+  el('c-meta').textContent = `${current.campus||'—'} • ${current.country||'—'} • ${current.background||'—'}`;
+  el('c-tags').innerHTML = (current.interests||[]).map(t=>`<span class="tag">${escapeHtml(t)}</span>`).join('') || '<span class="muted small">No interests listed</span>';
+}
+
+function renderMatches(){
+  const box = el('matches');
+  box.innerHTML = '';
+  if(!matchList.length){
+    box.innerHTML = '<div class="muted small">No matches yet.</div>';
+    return;
+  }
+  matchList.forEach(m=>{
+    const p = m.partner || {};
+    const when = m.ts ? new Date(m.ts).toLocaleString() : '';
+    const tags = (p.interests||[]).map(t=>`<span class="tag">${escapeHtml(t)}</span>`).join('');
+    const teams = p.teams ? `<div class="small">Teams: <b>${escapeHtml(p.teams)}</b></div>` : '';
+    const codeSpan = p.code ? `<div class="small muted">Code: ${escapeHtml(p.code)}</div>` : '';
+    box.insertAdjacentHTML('beforeend', `
+      <div class="item">
+        <div><b>${escapeHtml(p.name||'Unknown')}</b></div>
+        <div class="small muted">${escapeHtml(p.campus||'—')} • ${escapeHtml(p.country||'—')} • ${escapeHtml(p.background||'—')}</div>
+        <div class="pill" style="margin-top:6px">${tags||'<span class="small muted">No interests</span>'}</div>
+        ${teams}
+        ${codeSpan}
+        <div class="small muted" style="margin-top:6px">Matched: ${escapeHtml(when)}</div>
+      </div>
+    `);
+  });
+}
+
+/* ==========================
+   MATCH SYNC
+========================== */
+function recordMatch(partner){
+  // normalize + keep latest on top by ts
+  const ts = Date.now();
+  const norm = {
+    ts,
+    partner: {
+      code: partner.code || partner.id || '',
+      name: partner.name || '',
+      campus: partner.campus || '',
+      country: partner.country || '',
+      background: partner.background || '',
+      interests: Array.isArray(partner.interests) ? partner.interests.slice() : [],
+      teams: partner.teams || ''
     }
+  };
+  // de-dup by code
+  const code = norm.partner.code || (norm.partner.name + '|' + norm.ts);
+  const seen = new Set(matchList.map(m => (m.partner && m.partner.code) ? m.partner.code : ''));
+  if(!seen.has(code)){ matchList.unshift(norm); }
+  renderMatches();
+}
+
+function applyServerMatches(serverMatches){
+  // server returns [{ts, partner:{name,...}}] (ts may be numeric)
+  // replace local with server truth (sorted desc ts)
+  if(!Array.isArray(serverMatches)) return;
+  matchList = serverMatches.slice().sort((a,b)=> (b.ts||0)-(a.ts||0));
+  renderMatches();
+}
+
+async function syncMatchesFromServer(){
+  if(!joinCode) return;
+  const res = await apiGet({ action:'matches', code: joinCode });
+  if(!res.ok) return;
+  applyServerMatches(res.matches||[]);
+  el('last-sync').textContent = 'Last sync: ' + new Date().toLocaleTimeString();
+}
+
+/* ==========================
+   UTIL
+========================== */
+function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
+/* ==========================
+   WIRE UP
+========================== */
+el('btn-register').addEventListener('click', saveProfile);
+el('btn-restore').addEventListener('click', restore);
+el('btn-logout').addEventListener('click', logout);
+el('btn-left').addEventListener('click', ()=> onSwipe('left'));
+el('btn-right').addEventListener('click', ()=> onSwipe('right'));
+el('btn-refresh').addEventListener('click', ()=> syncMatchesFromServer());
+
+window.addEventListener('load', async ()=>{
+  loadSession();
+  if(joinCode){
+    // fast restore
+    try{
+      const res = await apiGet({ action:'restore', code: joinCode });
+      if(res.ok){
+        meProfile = res.profile||{};
+        matchList = res.matches||[];
+        el('me-name').textContent = meProfile.name || '—';
+        el('me-code').textContent = joinCode;
+        hide('screen-profile'); show('screen-swipe');
+        startMatchPolling();
+        renderMatches();
+        await fetchCandidates();
+        await nextCard();
+        return;
+      }
+    }catch(_e){}
   }
-})();
+  // fallback to profile screen
+  hide('screen-swipe'); show('screen-profile');
+});
 </script>
 </body>
 </html>
-
-
