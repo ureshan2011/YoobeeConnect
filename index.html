@@ -33,12 +33,24 @@
     #status{font-size:13px;color:var(--sub)}
     .swipe-card{border:1px dashed rgba(255,255,255,.15);border-radius:16px;padding:16px}
     .who{font-size:18px}
-    .actions{display:flex;gap:12px;justify-content:space-between}
+    .actions{display:flex;gap:12px;justify-content:space-between;flex-wrap:wrap}
     .col{display:flex;flex-direction:column;gap:14px}
     .matches .item{padding:12px;border:1px solid rgba(255,255,255,.08);border-radius:12px;margin-bottom:10px;background:rgba(255,255,255,.03)}
     .small{font-size:12px}
     .right{float:right}
     .hidden{display:none !important}
+    @media(max-width:600px){
+      body{font-size:15px;}
+      .wrap{margin:0 auto;padding:16px;min-height:100vh}
+      .grid{grid-template-columns:1fr;gap:16px}
+      .card{padding:18px}
+      .row{grid-template-columns:1fr}
+      .actions{flex-direction:column}
+      .actions .btn{width:100%}
+      #screen-profile .row,#screen-profile .actions{gap:10px}
+      #screen-profile .row .btn{width:100%}
+      .pill{gap:6px}
+    }
   </style>
 </head>
 <body>
@@ -68,7 +80,7 @@
         <div class="row">
           <div>
             <label>Country</label>
-            <input id="country" placeholder="e.g., New Zealand" />
+            <select id="country"></select>
           </div>
           <div>
             <label>Background</label>
@@ -154,17 +166,72 @@ const MATCH_POLL_MS = 15000;
 const el = id => document.getElementById(id);
 const show = id => el(id).classList.remove('hidden');
 const hide = id => el(id).classList.add('hidden');
+const normalizeCode = code => (code || '').toString().trim().toUpperCase();
+const COUNTRY_LIST = [
+  'Afghanistan','Albania','Algeria','Andorra','Angola','Antigua and Barbuda','Argentina','Armenia','Australia','Austria',
+  'Azerbaijan','Bahamas','Bahrain','Bangladesh','Barbados','Belarus','Belgium','Belize','Benin','Bhutan','Bolivia',
+  'Bosnia and Herzegovina','Botswana','Brazil','Brunei','Bulgaria','Burkina Faso','Burundi','Cambodia','Cameroon','Canada',
+  'Cape Verde','Central African Republic','Chad','Chile','China','Colombia','Comoros','Congo (Republic)','Congo (DRC)',
+  'Costa Rica','Côte d\'Ivoire','Croatia','Cuba','Cyprus','Czech Republic','Denmark','Djibouti','Dominica','Dominican Republic','Ecuador',
+  'Egypt','El Salvador','Equatorial Guinea','Eritrea','Estonia','Eswatini','Ethiopia','Fiji','Finland','France','Gabon',
+  'Gambia','Georgia','Germany','Ghana','Greece','Grenada','Guatemala','Guinea','Guinea-Bissau','Guyana','Haiti','Honduras',
+  'Hungary','Iceland','India','Indonesia','Iran','Iraq','Ireland','Israel','Italy','Jamaica','Japan','Jordan','Kazakhstan',
+  'Kenya','Kiribati','Kuwait','Kyrgyzstan','Laos','Latvia','Lebanon','Lesotho','Liberia','Libya','Liechtenstein',
+  'Lithuania','Luxembourg','Madagascar','Malawi','Malaysia','Maldives','Mali','Malta','Marshall Islands','Mauritania',
+  'Mauritius','Mexico','Micronesia','Moldova','Monaco','Mongolia','Montenegro','Morocco','Mozambique','Myanmar','Namibia',
+  'Nauru','Nepal','Netherlands','New Zealand','Nicaragua','Niger','Nigeria','North Korea','North Macedonia','Norway','Oman',
+  'Pakistan','Palestine','Palau','Panama','Papua New Guinea','Paraguay','Peru','Philippines','Poland','Portugal','Qatar','Romania',
+  'Russia','Rwanda','Saint Kitts and Nevis','Saint Lucia','Saint Vincent and the Grenadines','Samoa','San Marino',
+  'Sao Tome and Principe','Saudi Arabia','Senegal','Serbia','Seychelles','Sierra Leone','Singapore','Slovakia','Slovenia',
+  'Solomon Islands','Somalia','South Africa','South Korea','South Sudan','Spain','Sri Lanka','Sudan','Suriname','Sweden',
+  'Switzerland','Syria','Taiwan','Tajikistan','Tanzania','Thailand','Timor-Leste','Togo','Tonga','Trinidad and Tobago',
+  'Tunisia','Turkey','Turkmenistan','Tuvalu','Uganda','Ukraine','United Arab Emirates','United Kingdom','United States',
+  'Uruguay','Uzbekistan','Vanuatu','Vatican City','Venezuela','Vietnam','Yemen','Zambia','Zimbabwe'
+];
 function setStatus(msg, where='status'){ el(where).textContent = msg || ''; }
+function populateCountrySelect(selected=''){
+  const select = el('country');
+  if(!select) return;
+  const chosen = selected || select.value || '';
+  select.innerHTML = '';
+  const placeholder = document.createElement('option');
+  placeholder.value = '';
+  placeholder.textContent = 'Select country…';
+  placeholder.disabled = true;
+  if(!chosen) placeholder.selected = true;
+  select.appendChild(placeholder);
+  COUNTRY_LIST.forEach(country => {
+    const opt = document.createElement('option');
+    opt.value = country;
+    opt.textContent = country;
+    if(country === chosen) opt.selected = true;
+    select.appendChild(opt);
+  });
+}
+function populateProfileFormFromState(){
+  const profile = meProfile || {};
+  el('name').value = profile.name || '';
+  el('campus').value = profile.campus || '';
+  populateCountrySelect(profile.country || '');
+  el('background').value = profile.background || '';
+  if(Array.isArray(profile.interests)){
+    el('interests').value = profile.interests.join(', ');
+  }else{
+    el('interests').value = profile.interests || '';
+  }
+  el('teams').value = profile.teams || '';
+}
 
 /* ==========================
    STORAGE
 ========================== */
 function saveSession(){
+  joinCode = normalizeCode(joinCode);
   localStorage.setItem('yc_code', joinCode || '');
   localStorage.setItem('yc_profile', JSON.stringify(meProfile||{}));
 }
 function loadSession(){
-  joinCode = localStorage.getItem('yc_code') || '';
+  joinCode = normalizeCode(localStorage.getItem('yc_code') || '');
   try{ meProfile = JSON.parse(localStorage.getItem('yc_profile')||'{}'); }catch{ meProfile = {}; }
 }
 function clearSession(){
@@ -201,6 +268,7 @@ async function apiPost(body){
 ========================== */
 function startMatchPolling(){
   stopMatchPolling();
+  joinCode = normalizeCode(joinCode);
   if(!joinCode) return;
   const tick = async () => {
     if(document.visibilityState === 'visible' && joinCode){
@@ -242,9 +310,13 @@ async function saveProfile(){
   }
   if(!res.ok){ setStatus('Error: ' + res.error); return; }
 
-  joinCode = res.code;
+  joinCode = normalizeCode(res.code);
   meProfile = res.profile||{};
+  if(meProfile){
+    meProfile.country = meProfile.country || country;
+  }
   saveSession();
+  populateProfileFormFromState();
 
   el('me-name').textContent = meProfile.name || name;
   el('me-code').textContent = joinCode;
@@ -258,7 +330,7 @@ async function saveProfile(){
 
 async function restore(){
   loadSession();
-  const code = prompt('Enter your join code:', joinCode || '');
+  const code = normalizeCode(prompt('Enter your join code:', joinCode || ''));
   if(!code){ return; }
   setStatus('Restoring…');
   let res;
@@ -269,10 +341,11 @@ async function restore(){
     return;
   }
   if(!res.ok){ setStatus('Error: ' + res.error); return; }
-  joinCode = code.toUpperCase();
+  joinCode = code;
   meProfile = res.profile||{};
   matchList = Array.isArray(res.matches)? res.matches : [];
   saveSession();
+  populateProfileFormFromState();
   el('me-name').textContent = meProfile.name || '—';
   el('me-code').textContent = joinCode;
   setStatus('');
@@ -287,22 +360,24 @@ function logout(){
   stopMatchPolling();
   clearSession();
   joinCode = null;
-  meProfile = null;
+  meProfile = {};
   deck = []; swiped.clear(); matchList = []; current=null;
   el('matches').innerHTML = '';
   hide('screen-swipe'); show('screen-profile');
   setStatus('', 'status2');
+  populateProfileFormFromState();
 }
 
 /* ==========================
    CANDIDATES & SWIPES
 ========================== */
 async function fetchCandidates(){
-  if(!joinCode) return;
+  const code = normalizeCode(joinCode);
+  if(!code) return;
   setStatus('Loading candidates…','status2');
   let res;
   try{
-    res = await apiGet({ action:'candidates', code: joinCode });
+    res = await apiGet({ action:'candidates', code });
   }catch(e){
     setStatus('Candidates failed: ' + e.message, 'status2');
     return;
@@ -315,17 +390,31 @@ async function fetchCandidates(){
 
 async function onSwipe(dir){
   if(!current) return;
+  const code = normalizeCode(joinCode);
+  if(!code){ setStatus('Missing join code. Please sign in again.','status2'); return; }
   const target = current.code;
+  if(!target){ return; }
   swiped.add(target);
+  setStatus('Saving swipe…','status2');
   let res;
   try{
-    res = await apiPost({ action:'swipe', code: joinCode, target, dir });
+    res = await apiPost({ action:'swipe', code, target, dir });
   }catch(e){
+    swiped.delete(target);
     setStatus('Swipe failed: ' + e.message, 'status2');
     return;
   }
+  if(!res || !res.ok){
+    swiped.delete(target);
+    setStatus('Swipe failed: ' + (res && res.error ? res.error : 'Unknown error'), 'status2');
+    return;
+  }
+  setStatus('', 'status2');
   if(res.matched && res.partner){
     recordMatch(res.partner);
+  }
+  if(Array.isArray(res.matches)){
+    applyServerMatches(res.matches);
   }
   await nextCard();
   try { await syncMatchesFromServer(); } catch(_e){}
@@ -424,8 +513,9 @@ function applyServerMatches(serverMatches){
 }
 
 async function syncMatchesFromServer(){
-  if(!joinCode) return;
-  const res = await apiGet({ action:'matches', code: joinCode });
+  const code = normalizeCode(joinCode);
+  if(!code) return;
+  const res = await apiGet({ action:'matches', code });
   if(!res.ok) return;
   applyServerMatches(res.matches||[]);
   el('last-sync').textContent = 'Last sync: ' + new Date().toLocaleTimeString();
@@ -448,6 +538,7 @@ el('btn-refresh').addEventListener('click', ()=> syncMatchesFromServer());
 
 window.addEventListener('load', async ()=>{
   loadSession();
+  populateProfileFormFromState();
   if(joinCode){
     try{
       const res = await apiGet({ action:'restore', code: joinCode });
