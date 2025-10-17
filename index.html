@@ -856,8 +856,7 @@ async function apiPost(body){
   const r = await fetch(API, {
     method:'POST',
     headers:{
-      'Content-Type':'text/plain;charset=UTF-8',
-      'Accept':'application/json'
+      'Content-Type':'application/json'
     },
     body:JSON.stringify(body),
     cache:'no-store'
