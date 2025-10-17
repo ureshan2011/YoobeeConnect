@@ -95,6 +95,8 @@
     flex-direction:column;
     gap:12px;
   }
+  .match-head{display:flex;flex-wrap:wrap;align-items:flex-start;gap:12px;justify-content:space-between}
+  .match-head-actions{display:flex;gap:8px;flex-wrap:wrap}
   .match-card h3{margin:0;font-size:18px;font-weight:650}
   .match-limit{font-size:13px;color:#8be4c8}
   .match-list{max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:12px;padding-right:4px}
@@ -412,9 +414,14 @@
         </div>
       </div>
       <div class="match-card" id="match-card">
-        <div>
-          <h3>Your matches</h3>
-          <div class="match-limit" id="match-limit-status">Up to 3 matches every 24 hours.</div>
+        <div class="match-head">
+          <div>
+            <h3>Your matches</h3>
+            <div class="match-limit" id="match-limit-status">Up to 3 matches every 24 hours.</div>
+          </div>
+          <div class="match-head-actions">
+            <button class="btn ghost" id="btn-match-refresh" data-default-text="Refresh matches" data-loading-text="Refreshing…">Refresh matches</button>
+          </div>
         </div>
         <div id="match-alert" class="match-list"></div>
       </div>
@@ -460,6 +467,7 @@ let current = null;
 const MATCH_LIMIT = 3;
 const MATCH_WINDOW_MS = 24 * 60 * 60 * 1000;
 const MATCH_STORAGE_KEY = 'matchHistory';
+const MATCH_HISTORY_MAX = 50;
 function show(id){ document.getElementById(id).style.display='block'; }
 function hide(id){ document.getElementById(id).style.display='none'; }
 function pills(parent, arr){
@@ -502,7 +510,7 @@ function getMatchHistory(){
 function saveMatchHistory(history){
   if(!joinCode) return;
   const store = getMatchStore();
-  store[joinCode] = history;
+  store[joinCode] = Array.isArray(history) ? history.slice(0, MATCH_HISTORY_MAX) : [];
   localStorage.setItem(MATCH_STORAGE_KEY, JSON.stringify(store));
 }
 
@@ -510,6 +518,148 @@ function recentMatches(list){
   const entries = Array.isArray(list) ? list : [];
   const cutoff = Date.now() - MATCH_WINDOW_MS;
   return entries.filter(entry => entry && typeof entry.ts === 'number' && entry.ts > cutoff);
+}
+
+function normalizeInterests(value){
+  if(Array.isArray(value)){
+    return value.map(v => typeof v === 'string' ? v.trim() : String(v || '').trim()).filter(Boolean);
+  }
+  if(typeof value === 'string'){
+    return value.split(/[,;]+/).map(v => v.trim()).filter(Boolean);
+  }
+  return [];
+}
+
+function normalizePartner(source){
+  const data = source || {};
+  return {
+    name: data.name || data.fullName || data.displayName || 'Match',
+    campus: data.campus || data.campusName || '',
+    country: data.country || data.countryName || '',
+    background: data.background || data.program || data.study || data.major || '',
+    interests: normalizeInterests(data.interests || data.tags || data.skills),
+    teams: data.teams || data.email || data.contact || data.handle || ''
+  };
+}
+
+function buildMatchEntry(raw, fallbackTs){
+  if(!raw) return null;
+  const partnerSource = raw.partner || raw.profile || raw.student || raw.user || raw.target || raw;
+  const numericTsCandidates = [raw.ts, raw.timestamp, raw.time, raw.matchedAt, raw.createdAt, raw.updatedAt];
+  let ts = numericTsCandidates.find(v => typeof v === 'number' && Number.isFinite(v));
+  if(ts === undefined){
+    const stringTsCandidates = [raw.timestamp, raw.time, raw.matchedAt, raw.date, raw.createdAt, raw.updatedAt];
+    for(const candidate of stringTsCandidates){
+      if(typeof candidate === 'string' && candidate){
+        const parsed = Date.parse(candidate);
+        if(!Number.isNaN(parsed)){ ts = parsed; break; }
+      }
+    }
+  }
+  if(ts === undefined){
+    ts = typeof fallbackTs === 'number' && Number.isFinite(fallbackTs) ? fallbackTs : Date.now();
+  }
+  return { ts, partner: normalizePartner(partnerSource) };
+}
+
+function mergeMatchHistories(existing, incoming){
+  const combined = [
+    ...(Array.isArray(existing) ? existing : []),
+    ...(Array.isArray(incoming) ? incoming : [])
+  ]
+    .map(entry => buildMatchEntry(entry, entry && entry.ts))
+    .filter(Boolean);
+  const deduped = new Map();
+  combined.forEach(entry => {
+    const partner = entry.partner || {};
+    const key = [
+      (partner.teams || '').toLowerCase(),
+      (partner.name || '').toLowerCase(),
+      (partner.campus || '').toLowerCase(),
+      (partner.country || '').toLowerCase(),
+      (partner.background || '').toLowerCase()
+    ].join('|');
+    const current = deduped.get(key);
+    if(!current || current.ts < entry.ts){
+      deduped.set(key, entry);
+    }
+  });
+  return Array.from(deduped.values()).sort((a,b)=>b.ts - a.ts).slice(0, MATCH_HISTORY_MAX);
+}
+
+function extractMatchesFromResponse(res){
+  if(!res || typeof res !== 'object') return [];
+  if(Array.isArray(res.matches)) return res.matches;
+  if(res.profile && Array.isArray(res.profile.matches)) return res.profile.matches;
+  if(Array.isArray(res.matchHistory)) return res.matchHistory;
+  if(res.data && Array.isArray(res.data.matches)) return res.data.matches;
+  return [];
+}
+
+function applyServerMatches(rawMatches){
+  if(!joinCode) return;
+  const merged = mergeMatchHistories(getMatchHistory(), Array.isArray(rawMatches) ? rawMatches : []);
+  saveMatchHistory(merged);
+  refreshMatchUI(merged);
+}
+
+async function syncMatchesFromServer(){
+  if(!joinCode) return;
+  let res = null;
+  try{
+    res = await apiGet({ action:'matches', code:joinCode });
+  }catch(err){
+    console.warn('matches action unavailable, falling back to restore', err);
+  }
+  if(!res || res.error){
+    try{
+      res = await apiGet({ action:'restore', code:joinCode });
+    }catch(err){
+      console.error('Unable to refresh matches from server', err);
+      throw err;
+    }
+  }
+  if(!res) return;
+  if(res.error){
+    throw new Error(res.error);
+  }
+  if(res.ok === false){
+    throw new Error(res.error || 'Unable to refresh matches.');
+  }
+  if(res.profile){
+    myProfile = res.profile;
+  }
+  const matches = extractMatchesFromResponse(res);
+  applyServerMatches(matches);
+}
+
+async function manualMatchRefresh(){
+  const button = document.getElementById('btn-match-refresh');
+  if(button){
+    const defaultText = button.dataset.defaultText || button.textContent || 'Refresh matches';
+    const loadingText = button.dataset.loadingText || 'Refreshing…';
+    button.dataset.defaultText = defaultText;
+    button.dataset.loading = '1';
+    button.disabled = true;
+    button.textContent = loadingText;
+  }
+  try{
+    if(!joinCode){
+      refreshMatchUI([]);
+      return;
+    }
+    await syncMatchesFromServer();
+  }catch(err){
+    console.error('Manual match refresh failed', err);
+    alert(err && err.message ? err.message : 'Unable to refresh matches. Please try again.');
+  }finally{
+    if(button){
+      delete button.dataset.loading;
+      const text = button.dataset.defaultText || 'Refresh matches';
+      button.textContent = text;
+      button.disabled = !joinCode;
+    }
+  }
 }
 
 function renderMatchHistory(history){
@@ -643,6 +793,19 @@ function updateEmptyState(limitActive){
 
 function refreshMatchUI(history){
   const provided = Array.isArray(history) ? history : undefined;
+  const refreshBtn = document.getElementById('btn-match-refresh');
+  if(refreshBtn){
+    const defaultText = refreshBtn.dataset.defaultText || refreshBtn.textContent || 'Refresh matches';
+    if(!refreshBtn.dataset.defaultText){
+      refreshBtn.dataset.defaultText = defaultText;
+    }
+    if(refreshBtn.dataset.loading === '1'){
+      refreshBtn.disabled = true;
+    }else{
+      refreshBtn.disabled = !joinCode;
+      refreshBtn.textContent = refreshBtn.dataset.defaultText || defaultText;
+    }
+  }
   renderMatchHistory(provided);
   if(!joinCode){
     updateMatchLimitUI([]);
@@ -671,25 +834,9 @@ function matchesRemaining(){
 
 function recordMatch(partner){
   if(!joinCode) return;
-  const interestList = Array.isArray(partner.interests)
-    ? partner.interests
-    : (typeof partner.interests === 'string'
-        ? partner.interests.split(',').map(v=>v.trim()).filter(Boolean)
-        : []);
-  const entry = {
-    ts: Date.now(),
-    partner: {
-      name: partner.name || 'Match',
-      campus: partner.campus || '',
-      country: partner.country || '',
-      background: partner.background || '',
-      interests: interestList,
-      teams: partner.teams || ''
-    }
-  };
-  const history = [entry, ...getMatchHistory()].slice(0, 50);
-  saveMatchHistory(history);
-  refreshMatchUI(history);
+  const merged = mergeMatchHistories(getMatchHistory(), [{ partner, ts: Date.now() }]);
+  saveMatchHistory(merged);
+  refreshMatchUI(merged);
 }
 
 async function apiPost(body){
@@ -807,6 +954,10 @@ async function onSwipe(dir){
   if(res.matched && res.partner){
     recordMatch(res.partner);
   }
+  const extraMatches = extractMatchesFromResponse(res);
+  if(extraMatches.length){
+    applyServerMatches(extraMatches);
+  }
   await nextCard();
 }
 
@@ -826,7 +977,12 @@ async function saveProfile(){
   localStorage.setItem('joinCode', joinCode);
   myProfile = res.profile;
   updateSessionUI();
-  refreshMatchUI([]);
+  const matches = extractMatchesFromResponse(res);
+  if(matches.length){
+    applyServerMatches(matches);
+  }else{
+    refreshMatchUI([]);
+  }
 
   hide('screen-profile'); show('screen-swipe');
   await nextCard();
@@ -840,7 +996,12 @@ async function restore(){
   joinCode = code; localStorage.setItem('joinCode', joinCode);
   myProfile = res.profile;
   updateSessionUI();
-  refreshMatchUI();
+  const matches = extractMatchesFromResponse(res);
+  if(matches.length){
+    applyServerMatches(matches);
+  }else{
+    refreshMatchUI();
+  }
   hide('screen-profile'); show('screen-swipe');
   await nextCard();
 }
@@ -848,6 +1009,7 @@ async function restore(){
 document.getElementById('btn-start').onclick = saveProfile;
 document.getElementById('btn-no').onclick = ()=>onSwipe('left');
 document.getElementById('btn-yes').onclick = ()=>onSwipe('right');
+document.getElementById('btn-match-refresh').onclick = manualMatchRefresh;
 document.getElementById('btn-refresh').onclick = nextCard;
 document.getElementById('btn-copy').onclick = copyJoinCode;
 document.getElementById('btn-logout').onclick = ()=>{
@@ -867,7 +1029,12 @@ document.getElementById('btn-restore-do').onclick = restore;
     const res = await apiGet({ action:'restore', code:joinCode });
     if(res.ok){
       myProfile = res.profile;
-      refreshMatchUI();
+      const matches = extractMatchesFromResponse(res);
+      if(matches.length){
+        applyServerMatches(matches);
+      }else{
+        refreshMatchUI();
+      }
       hide('screen-profile'); show('screen-swipe');
       await nextCard();
     }else{
