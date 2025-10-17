@@ -278,6 +278,17 @@
               <option>Christchurch</option>
             </select>
           </div>
+          <div>
+            <label>Gender</label>
+            <select id="gender" required>
+              <option value="">Select gender…</option>
+              <option>Female</option>
+              <option>Male</option>
+              <option>Non-binary</option>
+              <option>Prefer not to say</option>
+              <option>Other</option>
+            </select>
+          </div>
         </div>
         <div class="row">
           <div>
@@ -427,6 +438,8 @@ function populateProfileFormFromState(){
   if(nameField){ nameField.value = profile.name || ''; }
   const campusField = el('campus');
   if(campusField){ campusField.value = profile.campus || ''; }
+  const genderField = el('gender');
+  if(genderField){ genderField.value = profile.gender || ''; }
   populateCountrySelect(profile.country || '');
   const backgroundField = el('background');
   if(backgroundField){ backgroundField.value = profile.background || ''; }
@@ -523,13 +536,14 @@ document.addEventListener('visibilitychange', ()=>{
 async function saveProfile(){
   const name = el('name').value.trim();
   const campus = el('campus').value.trim();
+  const gender = el('gender').value.trim();
   const country = el('country').value.trim();
   const background = el('background').value.trim();
   const interests = el('interests').value.trim();
   const hobbies = el('hobbies').value.trim();
   const contactEmail = el('contact').value.trim();
-  if(!name || !campus || !background){
-    setStatus('Please fill Name, Campus, and Background.'); return;
+  if(!name || !campus || !gender || !background){
+    setStatus('Please fill Name, Campus, Gender, and Background.'); return;
   }
   if(!country || !interests || !hobbies || !contactEmail){
     setStatus('Country, interests, hobbies, and email are required.'); return;
@@ -542,7 +556,7 @@ async function saveProfile(){
   setStatus('Saving…');
   let res;
   try{
-    res = await apiPost({ action:'register', name, campus, country, background, interests, hobbies, teams: contactEmail });
+    res = await apiPost({ action:'register', name, campus, gender, country, background, interests, hobbies, teams: contactEmail });
   }catch(e){
     setStatus('Save failed: ' + e.message);
     return;
@@ -556,6 +570,7 @@ async function saveProfile(){
     meProfile.interests = Array.isArray(meProfile.interests) && meProfile.interests.length ? meProfile.interests : interestList;
     meProfile.hobbies = Array.isArray(meProfile.hobbies) && meProfile.hobbies.length ? meProfile.hobbies : hobbyList;
     meProfile.teams = meProfile.teams || contactEmail;
+    meProfile.gender = meProfile.gender || gender;
   }
   saveSession();
   populateProfileFormFromState();
@@ -640,7 +655,7 @@ async function fetchCandidates(){
             ? c.interests.split(/[,;|]/).map(t => t.trim()).filter(Boolean)
             : []);
       seen.add(code);
-      deck.push({ ...c, code, interests });
+      deck.push({ ...c, code, interests, gender: c.gender || '' });
     });
   setStatus('', 'status2');
 }
@@ -715,7 +730,8 @@ function renderCandidate(){
   }
   hide('candidate-empty'); show('candidate');
   el('c-name').textContent = current.name || '(No name)';
-  el('c-meta').textContent = `${current.campus||'—'} • ${current.country||'—'} • ${current.background||'—'}`;
+  const genderMeta = current.gender ? ` • ${current.gender}` : '';
+  el('c-meta').textContent = `${current.campus||'—'} • ${current.country||'—'} • ${current.background||'—'}${genderMeta}`;
   el('c-tags').innerHTML = (current.interests||[]).map(t=>`<span class="tag">${escapeHtml(t)}</span>`).join('') || '<span class="muted small">No interests listed</span>';
 }
 
@@ -733,10 +749,12 @@ function renderMatches(){
     const contactValue = p.teams || p.contact || '';
     const contactLine = contactValue ? `<div class="small">Email: <b>${escapeHtml(contactValue)}</b></div>` : '';
     const codeSpan = p.code ? `<div class="small muted">Code: ${escapeHtml(normalizeCode(p.code))}</div>` : '';
+    const genderLine = p.gender ? `<div class="small">Gender: <b>${escapeHtml(p.gender)}</b></div>` : '';
     box.insertAdjacentHTML('beforeend', `
       <div class="item">
         <div><b>${escapeHtml(p.name||'Unknown')}</b></div>
         <div class="small muted">${escapeHtml(p.campus||'—')} • ${escapeHtml(p.country||'—')} • ${escapeHtml(p.background||'—')}</div>
+        ${genderLine}
         <div class="pill" style="margin-top:6px">${tags||'<span class="small muted">No interests</span>'}</div>
         ${contactLine}
         ${codeSpan}
@@ -764,6 +782,7 @@ function recordMatch(partner){
       campus: partner && partner.campus ? partner.campus : '',
       country: partner && partner.country ? partner.country : '',
       background: partner && partner.background ? partner.background : '',
+      gender: partner && partner.gender ? partner.gender : '',
       interests: Array.isArray(partnerInterests)
         ? partnerInterests.slice()
         : (typeof partnerInterests === 'string' && partnerInterests.trim()
@@ -801,6 +820,7 @@ function applyServerMatches(serverMatches){
         partner: {
           ...partner,
           code,
+          gender: partner.gender || '',
           teams: partner.teams || partner.contact || '',
           interests: Array.isArray(partnerInterests)
             ? partnerInterests.slice()
