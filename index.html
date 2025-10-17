@@ -853,12 +853,19 @@ function recordMatch(partner){
 }
 
 async function apiPost(body){
-  const r = await fetch(API, { method:'POST',body:JSON.stringify(body)});
+  const r = await fetch(API, {
+    method:'POST',
+    body:JSON.stringify(body),
+    cache:'no-store'
+  });
   return await r.json();
 }
 async function apiGet(params){
-  const url = API + "?" + new URLSearchParams(params).toString();
-  const r = await fetch(url); return await r.json();
+  const query = new URLSearchParams(params || {});
+  query.set('_', Date.now().toString());
+  const url = API + "?" + query.toString();
+  const r = await fetch(url, { cache:'no-store' });
+  return await r.json();
 }
 
 function renderCard(p){

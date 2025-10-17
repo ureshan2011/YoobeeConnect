@@ -571,9 +571,16 @@ function parseBody(e){
 }
 
 function respondJson(payload){
-  return ContentService
+  var output = ContentService
     .createTextOutput(JSON.stringify(payload))
     .setMimeType(ContentService.MimeType.JSON);
+  if(output.setHeader){
+    output
+      .setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+      .setHeader('Pragma', 'no-cache')
+      .setHeader('Expires', '0');
+  }
+  return output;
 }
 
 function createError(error){
