@@ -84,7 +84,29 @@
   .hr{height:1px;background:rgba(148,163,184,0.14);margin:18px 0}
   .muted{color:#9ca3af}
   .center{display:flex;align-items:center;justify-content:center;text-align:center}
-  .match{border:1px solid rgba(16,185,129,0.35);background:rgba(16,185,129,0.08);padding:16px;border-radius:16px;margin-top:16px;line-height:1.5}
+  .match-card{
+    border:1px solid rgba(16,185,129,0.35);
+    background:rgba(16,185,129,0.08);
+    padding:16px;
+    border-radius:16px;
+    margin-top:16px;
+    line-height:1.5;
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+  }
+  .match-card h3{margin:0;font-size:18px;font-weight:650}
+  .match-limit{font-size:13px;color:#8be4c8}
+  .match-list{max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:12px;padding-right:4px}
+  .match-entry{background:rgba(15,23,42,0.65);border:1px solid rgba(16,185,129,0.3);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:6px}
+  .match-entry-title{display:flex;align-items:center;justify-content:space-between;gap:12px;font-weight:600;color:#e7fff3}
+  .match-entry-meta{font-size:13px;color:#b0f0d7;display:flex;flex-wrap:wrap;gap:8px}
+  .match-entry-bg{font-size:14px;color:#d9ffe9}
+  .match-entry-time{font-size:12px;color:#74c9a6;white-space:nowrap}
+  .match-entry .badges{margin-top:2px}
+  .match-entry .pill{background:rgba(16,185,129,0.18);border-color:rgba(16,185,129,0.35);color:#cbffec}
+  .match-entry-actions{margin-top:4px}
+  .btn:disabled{opacity:0.6;cursor:not-allowed;box-shadow:none;transform:none}
   .swipe-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:4px 0 18px}
   .swipe-head h3{margin:0;font-size:22px;font-weight:650}
   .hint{font-size:13px;color:#a3b2d6;line-height:1.5}
@@ -389,7 +411,13 @@
           <button class="btn" id="btn-logout">Log out &amp; reset</button>
         </div>
       </div>
-      <div id="match-alert" class="match" style="display:none"></div>
+      <div class="match-card" id="match-card">
+        <div>
+          <h3>Your matches</h3>
+          <div class="match-limit" id="match-limit-status">Up to 3 matches every 24 hours.</div>
+        </div>
+        <div id="match-alert" class="match-list"></div>
+      </div>
       <div class="deck">
         <div class="profile center loader-wrap" id="loading" style="display:none">
           <div class="loader"></div>
@@ -404,12 +432,12 @@
           <div class="hr"></div>
           <div class="hint">Icebreakers: What brought you to this field? Favourite local study spot? One fun fact?</div>
         </div>
-        <div class="profile center" id="empty" style="display:none">
+        <div class="profile center" id="empty" style="display:none" data-default-title="No more candidates right now" data-default-body="Hang tight; others are still joining. You can revisit in a few seconds." data-limit-title="Match limit reached" data-limit-body="You hit 3 matches. New suggestions unlock once 24 hours have passed.">
           <div>
             <h3>No more candidates right now</h3>
             <p class="muted">Hang tight; others are still joining. You can revisit in a few seconds.</p>
             <div class="actions center" style="justify-content:center">
-              <button class="btn" id="btn-refresh">Refresh</button>
+              <button class="btn" id="btn-refresh" data-default-text="Refresh" data-limit-text="Come back later">Refresh</button>
             </div>
           </div>
         </div>
@@ -429,6 +457,9 @@ let joinCode = localStorage.getItem("joinCode") || null;
 let myProfile = null;
 let deck = [];
 let current = null;
+const MATCH_LIMIT = 3;
+const MATCH_WINDOW_MS = 24 * 60 * 60 * 1000;
+const MATCH_STORAGE_KEY = 'matchHistory';
 function show(id){ document.getElementById(id).style.display='block'; }
 function hide(id){ document.getElementById(id).style.display='none'; }
 function pills(parent, arr){
@@ -438,6 +469,227 @@ function pills(parent, arr){
     span.className='pill'; span.textContent=v;
     parent.appendChild(span);
   });
+}
+
+function maskName(name){
+  const value = (name || '').trim();
+  if(!value) return 'Student';
+  if(value.length <= 2) return value.padEnd(2, '•');
+  return value.slice(0, 2) + '•••';
+}
+
+function safeParse(value){
+  if(!value) return null;
+  try{
+    return JSON.parse(value);
+  }catch(err){
+    return null;
+  }
+}
+
+function getMatchStore(){
+  const parsed = safeParse(localStorage.getItem(MATCH_STORAGE_KEY));
+  return parsed && typeof parsed === 'object' ? parsed : {};
+}
+
+function getMatchHistory(){
+  if(!joinCode) return [];
+  const store = getMatchStore();
+  const history = store[joinCode];
+  return Array.isArray(history) ? history : [];
+}
+
+function saveMatchHistory(history){
+  if(!joinCode) return;
+  const store = getMatchStore();
+  store[joinCode] = history;
+  localStorage.setItem(MATCH_STORAGE_KEY, JSON.stringify(store));
+}
+
+function recentMatches(list){
+  const entries = Array.isArray(list) ? list : [];
+  const cutoff = Date.now() - MATCH_WINDOW_MS;
+  return entries.filter(entry => entry && typeof entry.ts === 'number' && entry.ts > cutoff);
+}
+
+function renderMatchHistory(history){
+  const container = document.getElementById('match-alert');
+  if(!container) return;
+  container.innerHTML = '';
+  if(!joinCode){
+    const empty = document.createElement('div');
+    empty.className = 'muted';
+    empty.textContent = 'Sign in to view your matches.';
+    container.appendChild(empty);
+    return;
+  }
+  const entries = Array.isArray(history) ? history : getMatchHistory();
+  if(!entries || entries.length === 0){
+    const empty = document.createElement('div');
+    empty.className = 'muted';
+    empty.textContent = 'No matches yet. Mutual 👍 will reveal full details here.';
+    container.appendChild(empty);
+    return;
+  }
+  const sorted = [...entries].sort((a,b)=>b.ts - a.ts);
+  sorted.forEach(entry => {
+    if(!entry || !entry.partner) return;
+    const partner = entry.partner;
+    const item = document.createElement('div');
+    item.className = 'match-entry';
+
+    const title = document.createElement('div');
+    title.className = 'match-entry-title';
+    const nameEl = document.createElement('span');
+    nameEl.textContent = partner.name || 'Match';
+    const timeEl = document.createElement('span');
+    timeEl.className = 'match-entry-time';
+    timeEl.textContent = new Date(entry.ts).toLocaleString();
+    title.appendChild(nameEl);
+    title.appendChild(timeEl);
+    item.appendChild(title);
+
+    const metaValues = [partner.campus, partner.country].filter(Boolean);
+    if(metaValues.length){
+      const meta = document.createElement('div');
+      meta.className = 'match-entry-meta';
+      meta.textContent = metaValues.join(' • ');
+      item.appendChild(meta);
+    }
+
+    if(partner.background){
+      const bg = document.createElement('div');
+      bg.className = 'match-entry-bg';
+      bg.textContent = `Background: ${partner.background}`;
+      item.appendChild(bg);
+    }
+
+    const interests = Array.isArray(partner.interests)
+      ? partner.interests
+      : (typeof partner.interests === 'string'
+          ? partner.interests.split(',').map(v=>v.trim()).filter(Boolean)
+          : []);
+    if(interests.length){
+      const wrap = document.createElement('div');
+      wrap.className = 'badges';
+      pills(wrap, interests);
+      item.appendChild(wrap);
+    }
+
+    if(partner.teams){
+      const actions = document.createElement('div');
+      actions.className = 'match-entry-actions';
+      const link = document.createElement('a');
+      link.href = `https://teams.microsoft.com/l/chat/0/0?users=${encodeURIComponent(partner.teams)}`;
+      link.target = '_blank';
+      link.rel = 'noopener';
+      link.className = 'btn';
+      link.textContent = 'Open Teams chat';
+      actions.appendChild(link);
+      item.appendChild(actions);
+    }else{
+      const fallback = document.createElement('div');
+      fallback.className = 'hint';
+      fallback.textContent = 'Ask your facilitator to share contact details.';
+      item.appendChild(fallback);
+    }
+
+    container.appendChild(item);
+  });
+}
+
+function updateMatchLimitUI(recent){
+  const status = document.getElementById('match-limit-status');
+  if(!status) return;
+  if(!joinCode){
+    status.textContent = `Up to ${MATCH_LIMIT} matches every 24 hours.`;
+    return;
+  }
+  const list = Array.isArray(recent) ? recent : recentMatches(getMatchHistory());
+  const remaining = Math.max(0, MATCH_LIMIT - list.length);
+  if(remaining > 0){
+    status.textContent = `${remaining} match${remaining === 1 ? '' : 'es'} remaining in this 24-hour window.`;
+  }else if(list.length){
+    const soonestExpiry = Math.min(...list.map(entry => entry.ts)) + MATCH_WINDOW_MS;
+    const nextDate = new Date(soonestExpiry);
+    status.textContent = `Match limit reached. New suggestions after ${nextDate.toLocaleString([], { hour: '2-digit', minute: '2-digit' })}.`;
+  }else{
+    status.textContent = `Up to ${MATCH_LIMIT} matches every 24 hours.`;
+  }
+}
+
+function updateEmptyState(limitActive){
+  const empty = document.getElementById('empty');
+  if(!empty) return;
+  const titleEl = empty.querySelector('h3');
+  const bodyEl = empty.querySelector('p');
+  const refreshBtn = document.getElementById('btn-refresh');
+  if(limitActive){
+    if(titleEl) titleEl.textContent = empty.dataset.limitTitle || 'Match limit reached';
+    if(bodyEl) bodyEl.textContent = empty.dataset.limitBody || 'You hit the daily match limit. Check back later.';
+    if(refreshBtn){
+      refreshBtn.disabled = true;
+      refreshBtn.textContent = refreshBtn.dataset.limitText || 'Come back later';
+    }
+  }else{
+    if(titleEl) titleEl.textContent = empty.dataset.defaultTitle || 'No more candidates right now';
+    if(bodyEl) bodyEl.textContent = empty.dataset.defaultBody || 'Hang tight; others are still joining. You can revisit in a few seconds.';
+    if(refreshBtn){
+      refreshBtn.disabled = false;
+      refreshBtn.textContent = refreshBtn.dataset.defaultText || 'Refresh';
+    }
+  }
+}
+
+function refreshMatchUI(history){
+  const provided = Array.isArray(history) ? history : undefined;
+  renderMatchHistory(provided);
+  if(!joinCode){
+    updateMatchLimitUI([]);
+    updateEmptyState(false);
+    return;
+  }
+  const list = provided !== undefined ? provided : getMatchHistory();
+  const recent = recentMatches(list);
+  updateMatchLimitUI(recent);
+  updateEmptyState(recent.length >= MATCH_LIMIT);
+}
+
+function matchesRemaining(){
+  if(!joinCode){
+    updateMatchLimitUI([]);
+    updateEmptyState(false);
+    return MATCH_LIMIT;
+  }
+  const history = getMatchHistory();
+  const recent = recentMatches(history);
+  const remaining = Math.max(0, MATCH_LIMIT - recent.length);
+  updateMatchLimitUI(recent);
+  updateEmptyState(recent.length >= MATCH_LIMIT);
+  return remaining;
+}
+
+function recordMatch(partner){
+  if(!joinCode) return;
+  const interestList = Array.isArray(partner.interests)
+    ? partner.interests
+    : (typeof partner.interests === 'string'
+        ? partner.interests.split(',').map(v=>v.trim()).filter(Boolean)
+        : []);
+  const entry = {
+    ts: Date.now(),
+    partner: {
+      name: partner.name || 'Match',
+      campus: partner.campus || '',
+      country: partner.country || '',
+      background: partner.background || '',
+      interests: interestList,
+      teams: partner.teams || ''
+    }
+  };
+  const history = [entry, ...getMatchHistory()].slice(0, 50);
+  saveMatchHistory(history);
+  refreshMatchUI(history);
 }
 
 async function apiPost(body){
@@ -452,10 +704,10 @@ async function apiGet(params){
 function renderCard(p){
   if(!p){ hide('card'); show('empty'); hide('swipe-actions'); return; }
   show('card'); hide('empty'); show('swipe-actions');
-  document.getElementById('p-name').textContent = p.name || 'Student';
+  document.getElementById('p-name').textContent = maskName(p.name);
   const campusEl = document.getElementById('p-campus');
   campusEl.innerHTML = '';
-  [p.campus, p.country].filter(Boolean).forEach(value => {
+  [p.country].filter(Boolean).forEach(value => {
     const tag = document.createElement('span');
     tag.className = 'tag';
     tag.textContent = value;
@@ -503,15 +755,13 @@ function logout(){
   myProfile = null;
   deck = [];
   current = null;
-  const matchBox = document.getElementById('match-alert');
-  matchBox.style.display = 'none';
-  matchBox.innerHTML = '';
   document.getElementById('restore-code').value = '';
   document.getElementById('btn-copy').textContent = 'Copy Code';
   hide('screen-swipe');
   show('screen-profile');
   hide('restore-form');
   updateSessionUI();
+  refreshMatchUI();
 }
 
 function setLoading(state){
@@ -527,6 +777,12 @@ function setLoading(state){
 }
 
 async function nextCard(){
+  if(matchesRemaining() <= 0){
+    deck = [];
+    current = null;
+    renderCard(null);
+    return;
+  }
   if(deck.length===0){
     setLoading(true);
     try{
@@ -548,16 +804,8 @@ async function nextCard(){
 async function onSwipe(dir){
   if(!current) return;
   const res = await apiPost({ action:'swipe', code:joinCode, target:current.code, dir });
-  if(res.matched){
-    const box = document.getElementById('match-alert');
-    const partner = res.partner;
-    box.style.display='block';
-    const teamsLink = partner.teams ? `https://teams.microsoft.com/l/chat/0/0?users=${encodeURIComponent(partner.teams)}` : null;
-    box.innerHTML = `
-      <b>🎉 It's a match with ${partner.name}!</b><br/>
-      Campus: ${partner.campus || ''}${partner.country ? ` · Country: ${partner.country}` : ''} · Background: ${partner.background || ''}<br/>
-      ${teamsLink ? `<a href="${teamsLink}" target="_blank" class="btn" style="display:inline-block;margin-top:8px">Open Teams chat</a>` : '<span class="hint">Ask your facilitator to share contact</span>'}
-    `;
+  if(res.matched && res.partner){
+    recordMatch(res.partner);
   }
   await nextCard();
 }
@@ -578,6 +826,7 @@ async function saveProfile(){
   localStorage.setItem('joinCode', joinCode);
   myProfile = res.profile;
   updateSessionUI();
+  refreshMatchUI([]);
 
   hide('screen-profile'); show('screen-swipe');
   await nextCard();
@@ -591,6 +840,7 @@ async function restore(){
   joinCode = code; localStorage.setItem('joinCode', joinCode);
   myProfile = res.profile;
   updateSessionUI();
+  refreshMatchUI();
   hide('screen-profile'); show('screen-swipe');
   await nextCard();
 }
@@ -612,10 +862,12 @@ document.getElementById('btn-restore-do').onclick = restore;
 // Auto-restore if joinCode exists
 (async function boot(){
   updateSessionUI();
+  refreshMatchUI(joinCode ? getMatchHistory() : []);
   if(joinCode){
     const res = await apiGet({ action:'restore', code:joinCode });
     if(res.ok){
       myProfile = res.profile;
+      refreshMatchUI();
       hide('screen-profile'); show('screen-swipe');
       await nextCard();
     }else{
