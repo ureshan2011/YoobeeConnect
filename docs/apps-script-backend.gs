@@ -16,7 +16,7 @@ var SHEET_NAMES = {
 };
 
 var DEFAULT_HEADERS = {
-  profiles: ['timestamp','code','name','campus','country','background','interests','teams'],
+  profiles: ['timestamp','code','name','campus','country','background','interests','teams','photo'],
   swipes:   ['timestamp','swiper','target','dir'],
   matches:  ['timestamp','code_a','code_b']
 };
@@ -29,6 +29,7 @@ var PROFILE_ALIASES = {
   background:['background','programme','program','study','major','course'],
   interests: ['interests','interest','tags','skills'],
   teams:     ['teams','contact','email','handle','reachout'],
+  photo:     ['photo','profilephoto','picture','avatar','image','photodata','photo_data','photourl'],
   timestamp: ['timestamp','ts','created','created_at','createdat','submitted']
 };
 
@@ -147,7 +148,8 @@ function handleCandidates(params){
         campus: p.campus,
         country: p.country,
         background: p.background,
-        interests: Array.isArray(p.interests) ? p.interests.slice() : []
+        interests: Array.isArray(p.interests) ? p.interests.slice() : [],
+        photo: p.photo || ''
       };
     });
 
@@ -164,12 +166,14 @@ function handleRegister(body){
   }
   var interests = normalizeInterests(body.interests);
   var teams     = sanitizeString(body.teams);
+  var photo     = sanitizeImageData(body.photoData || body.photo || body.avatar || '');
 
   var ctx  = loadProfiles();
   var code = generateJoinCode(ctx.map);
   var profile = {
     code: code, name: name, campus: campus, country: country,
     background: background, interests: interests, teams: teams,
+    photo: photo,
     timestamp: new Date()
   };
   appendProfile(profile, ctx);
@@ -214,6 +218,7 @@ function loadProfiles(){
     background: findColumnIndex(table, PROFILE_ALIASES.background),
     interests:  findColumnIndex(table, PROFILE_ALIASES.interests),
     teams:      findColumnIndex(table, PROFILE_ALIASES.teams),
+    photo:      findColumnIndex(table, PROFILE_ALIASES.photo),
     timestamp:  findColumnIndex(table, PROFILE_ALIASES.timestamp)
   };
   if(idx.code === -1) throw new Error('Profiles sheet missing a code column');
@@ -234,6 +239,7 @@ function loadProfiles(){
       background: idx.background !== -1 ? sanitizeString(row[idx.background]) : '',
       interests:  idx.interests  !== -1 ? normalizeInterests(row[idx.interests]) : [],
       teams:      idx.teams      !== -1 ? sanitizeString(row[idx.teams])      : '',
+      photo:      idx.photo      !== -1 ? sanitizeImageData(row[idx.photo])    : '',
       timestamp:  idx.timestamp  !== -1 ? parseTimestamp(row[idx.timestamp])  : null
     });
   }
@@ -251,6 +257,7 @@ function appendProfile(profile, ctx){
   if(ctx.indexes.background!== -1){ row[ctx.indexes.background]= profile.background; }
   if(ctx.indexes.interests !== -1){ row[ctx.indexes.interests] = profile.interests.join(', '); }
   if(ctx.indexes.teams     !== -1){ row[ctx.indexes.teams]     = profile.teams; }
+  if(ctx.indexes.photo     !== -1){ row[ctx.indexes.photo]     = profile.photo || ''; }
   t.sheet.appendRow(row);
 
   ctx.map.set(profile.code, {
@@ -261,6 +268,7 @@ function appendProfile(profile, ctx){
     background: profile.background,
     interests: profile.interests.slice(),
     teams: profile.teams,
+    photo: profile.photo || '',
     timestamp: profile.timestamp instanceof Date ? profile.timestamp.getTime() : profile.timestamp
   });
 }
@@ -434,7 +442,8 @@ function extendProfileWithMatches(p, matches){
     country: p.country,
     background: p.background,
     interests: Array.isArray(p.interests) ? p.interests.slice() : [],
-    teams: p.teams || ''
+    teams: p.teams || '',
+    photo: p.photo || ''
   };
   if(p.timestamp){
     out.timestamp = (typeof p.timestamp === 'number') ? p.timestamp : parseTimestamp(p.timestamp);
@@ -451,7 +460,8 @@ function clonePartner(p, includeCode){
     country: p.country || '',
     background: p.background || '',
     interests: Array.isArray(p.interests) ? p.interests.slice() : [],
-    teams: p.teams || ''
+    teams: p.teams || '',
+    photo: p.photo || ''
   };
 }
 
@@ -484,6 +494,22 @@ function getTable(name, defaultHeader){
   if(lastCol === 0 && defaultHeader && defaultHeader.length) lastCol = defaultHeader.length;
   var header = lastCol > 0 ? sheet.getRange(1,1,1,lastCol).getValues()[0] : [];
   var map = buildHeaderIndex(header);
+  if(defaultHeader && defaultHeader.length){
+    var missing = [];
+    for(var i=0;i<defaultHeader.length;i++){
+      var key = normalizeKey(defaultHeader[i]);
+      if(key && map[key] === undefined){ missing.push(defaultHeader[i]); }
+    }
+    if(missing.length){
+      sheet.getRange(1, header.length+1, 1, missing.length).setValues([missing]);
+      for(var j=0;j<missing.length;j++){
+        var colName = missing[j];
+        header.push(colName);
+        var mk = normalizeKey(colName);
+        if(mk && map[mk] === undefined){ map[mk] = header.length - 1; }
+      }
+    }
+  }
   return { sheet: sheet, header: header, map: map };
 }
 
@@ -521,6 +547,20 @@ function sanitizeString(v){
     return Utilities.formatDate(v, Session.getScriptTimeZone(), "yyyy-MM-dd'T'HH:mm:ssXXX");
   }
   return String(v).trim();
+}
+
+function sanitizeImageData(v){
+  var s = sanitizeString(v);
+  if(!s) return '';
+  var trimmed = s.trim();
+  var match = trimmed.match(/^data:image\/(png|jpe?g|webp);base64,/i);
+  if(!match) return '';
+  var maxLength = 48000; // Google Sheets cell limit (~50k chars)
+  if(trimmed.length > maxLength) return '';
+  var prefix = match[0];
+  var payload = trimmed.substring(prefix.length).replace(/\s+/g, '');
+  if(/[^A-Za-z0-9+/=]/.test(payload)) return '';
+  return prefix + payload;
 }
 
 function normalizeInterests(v){
