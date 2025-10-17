@@ -39,18 +39,18 @@
     .small{font-size:12px}
     .right{float:right}
     .hidden{display:none !important}
-    @media(max-width:600px){
-      body{font-size:15px;}
-      .wrap{margin:0 auto;padding:16px;min-height:100vh}
-      .grid{grid-template-columns:1fr;gap:16px}
-      .card{padding:18px}
-      .row{grid-template-columns:1fr}
-      .actions{flex-direction:column}
-      .actions .btn{width:100%}
-      #screen-profile .row,#screen-profile .actions{gap:10px}
-      #screen-profile .row .btn{width:100%}
-      .pill{gap:6px}
-    }
+  
+/* --- Mobile enhancements (injected) --- */
+@media (max-width: 600px){
+  .wrap{margin:20px auto;padding:14px}
+  h1{font-size:24px}
+  .grid, .row{display:grid;grid-template-columns:1fr;gap:12px}
+  .actions{display:flex;gap:10px}
+  .btn{padding:12px 10px}
+  .actions .btn{flex:1}
+  .card, .swipe-card{padding:16px;border-radius:16px}
+}
+
   </style>
 </head>
 <body>
@@ -80,7 +80,7 @@
         <div class="row">
           <div>
             <label>Country</label>
-            <select id="country"></select>
+            <select id="country"><option value="">Select country…</option></select>
           </div>
           <div>
             <label>Background</label>
@@ -398,7 +398,7 @@ async function onSwipe(dir){
   setStatus('Saving swipe…','status2');
   let res;
   try{
-    res = await apiPost({ action:'swipe', fromCode: code, toCode: target, dir });
+    res = await apiPost({ action:'swipe', code, target, dir });
   }catch(e){
     swiped.delete(target);
     setStatus('Swipe failed: ' + e.message, 'status2');
@@ -558,6 +558,31 @@ window.addEventListener('load', async ()=>{
   }
   hide('screen-swipe'); show('screen-profile');
 });
+
+// --- Countries dropdown population (injected) ---
+const COUNTRIES = [
+  "New Zealand","Australia","India","Sri Lanka","Philippines","China","Japan","South Korea","Malaysia",
+  "Singapore","Thailand","Vietnam","Nepal","Pakistan","Bangladesh","United Kingdom","United States",
+  "Canada","Brazil","Germany","France","Italy","Spain","South Africa","Nigeria","Kenya","Fiji","Indonesia","Taiwan","Hong Kong"
+];
+
+function populateCountries(){
+  const sel = document.getElementById('country');
+  if(!sel) return;
+  const existing = Array.from(sel.options).map(o=>o.value);
+  const frag = document.createDocumentFragment();
+  COUNTRIES.forEach(c=>{
+    if(!existing.includes(c)){
+      const o = document.createElement('option');
+      o.value = c; o.textContent = c;
+      frag.appendChild(o);
+    }
+  });
+  sel.appendChild(frag);
+}
+
+window.addEventListener('load', populateCountries);
+
 </script>
 </body>
 </html>
