@@ -13,6 +13,8 @@ For each student profile, store:
   "Graphic Design", "Computer Science").
 - `country`: ISO country code or normalized country name.
 - `recent_matches`: timestamps or IDs of recent matches to avoid repeats.
+- `incoming_right_swipes`: set of user IDs who have already swiped right on the
+  profile. This allows the engine to prioritize potential reciprocal matches.
 
 ## Feature Weighting
 
@@ -32,27 +34,37 @@ Weights can be tuned later with analytics.
      explicitly declined recently (cooldown window).
    - Optionally keep the pool within the same course cohort or time zone bands.
 
-2. **Compute similarity score** for each remaining candidate `c` relative to the
+2. **Sort for expressed interest priority:** Separate the candidate pool into
+   two lists—profiles that already swiped right on `u` (using
+   `incoming_right_swipes`) and those that have not. Always rank and serve from
+   the expressed-interest list first so reciprocal opportunities appear before
+   cold introductions.
+
+3. **Compute similarity score** for each remaining candidate `c` relative to the
    target user `u`:
 
    ```pseudo
    interest_score = jaccard(u.interests, c.interests)
    background_score = jaccard(u.background_tags, c.background_tags)
    country_score = 1 if same_country_or_region(u.country, c.country) else 0
+   expressed_interest_bonus = 1 if u.id in c.incoming_right_swipes else 0
 
    total_score = 0.5 * interest_score
                + 0.3 * background_score
                + 0.2 * country_score
+               + 0.3 * expressed_interest_bonus
    ```
 
    Where `jaccard(A, B) = |A ∩ B| / |A ∪ B|`. Background strings should be mapped
-   to tags to make comparison robust.
+   to tags to make comparison robust. The expressed-interest bonus is additive,
+   ensuring candidates who have already shown intent surface before others even
+   when their profile similarity is comparable.
 
-3. **Diversity boost (optional):** Apply a small multiplier (e.g., `1.1`) to the
+4. **Diversity boost (optional):** Apply a small multiplier (e.g., `1.1`) to the
    score for candidates who contribute to diversity goals (different campus,
    underrepresented interests, etc.) to avoid homophily.
 
-4. **Rank and select** the top `N` candidates by `total_score`.
+5. **Rank and select** the top `N` candidates by `total_score`.
 
 ## Guaranteed Suggestion Fallback
 
