@@ -373,6 +373,12 @@ const el = id => document.getElementById(id);
 const show = id => el(id).classList.remove('hidden');
 const hide = id => el(id).classList.add('hidden');
 const normalizeCode = code => (code || '').toString().trim().toUpperCase();
+const normalizeCandidate = cand => {
+  if(!cand || typeof cand !== 'object') return null;
+  const code = normalizeCode(cand.code || cand.id || '');
+  if(!code) return null;
+  return { ...cand, code };
+};
 const isValidEmail = email => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 const COUNTRY_LIST = [
   'Afghanistan','Albania','Algeria','Andorra','Angola','Antigua and Barbuda','Argentina','Armenia','Australia','Austria',
@@ -619,8 +625,23 @@ async function fetchCandidates(){
     return;
   }
   if(!res.ok){ setStatus('Error: ' + res.error, 'status2'); return; }
-  const seen = new Set(deck.map(d=>d.code));
-  res.candidates.forEach(c=>{ if(!seen.has(c.code) && c.code!==joinCode) deck.push(c); });
+  const myCode = normalizeCode(joinCode);
+  const seen = new Set(deck.map(d=> normalizeCode(d.code)));
+  const incoming = Array.isArray(res.candidates) ? res.candidates : [];
+  incoming
+    .map(normalizeCandidate)
+    .filter(Boolean)
+    .forEach(c=>{
+      const code = normalizeCode(c.code);
+      if(!code || code === myCode || seen.has(code) || swiped.has(code)) return;
+      const interests = Array.isArray(c.interests)
+        ? c.interests.slice()
+        : (typeof c.interests === 'string' && c.interests.trim()
+            ? c.interests.split(/[,;|]/).map(t => t.trim()).filter(Boolean)
+            : []);
+      seen.add(code);
+      deck.push({ ...c, code, interests });
+    });
   setStatus('', 'status2');
 }
 
@@ -628,7 +649,7 @@ async function onSwipe(dir){
   if(!current) return;
   const code = normalizeCode(joinCode);
   if(!code){ setStatus('Missing join code. Please sign in again.','status2'); return; }
-  const target = current.code;
+  const target = normalizeCode(current.code);
   if(!target){ return; }
   swiped.add(target);
   setStatus('Saving swipe…','status2');
@@ -657,12 +678,17 @@ async function onSwipe(dir){
 }
 
 async function nextCard(){
-  const matchedCodes = new Set(matchList.map(m=> (m.partner && m.partner.code) ? m.partner.code : null));
+  const matchedCodes = new Set(
+    matchList
+      .map(m=> normalizeCode(m && m.partner ? (m.partner.code || m.partner.id || '') : ''))
+      .filter(Boolean)
+  );
   let next = null;
   while(deck.length){
-    const c = deck.shift();
-    if(!c || c.code===joinCode) continue;
-    if(swiped.has(c.code)) continue;
+    const c = normalizeCandidate(deck.shift());
+    if(!c) continue;
+    if(normalizeCode(c.code) === normalizeCode(joinCode)) continue;
+    if(swiped.has(c.code) || swiped.has(normalizeCode(c.code))) continue;
     if(matchedCodes.has(c.code)) continue;
     next = c; break;
   }
@@ -704,8 +730,9 @@ function renderMatches(){
     const p = m.partner || {};
     const when = m.ts ? new Date(m.ts).toLocaleString() : '';
     const tags = (p.interests||[]).map(t=>`<span class="tag">${escapeHtml(t)}</span>`).join('');
-    const contactLine = p.teams ? `<div class="small">Email: <b>${escapeHtml(p.teams)}</b></div>` : '';
-    const codeSpan = p.code ? `<div class="small muted">Code: ${escapeHtml(p.code)}</div>` : '';
+    const contactValue = p.teams || p.contact || '';
+    const contactLine = contactValue ? `<div class="small">Email: <b>${escapeHtml(contactValue)}</b></div>` : '';
+    const codeSpan = p.code ? `<div class="small muted">Code: ${escapeHtml(normalizeCode(p.code))}</div>` : '';
     box.insertAdjacentHTML('beforeend', `
       <div class="item">
         <div><b>${escapeHtml(p.name||'Unknown')}</b></div>
@@ -724,32 +751,80 @@ function renderMatches(){
 ========================== */
 function recordMatch(partner){
   const ts = Date.now();
+  const partnerCode = normalizeCode(partner && (partner.code || partner.id || ''));
+  const myCode = normalizeCode(joinCode);
+  if(!partnerCode || (myCode && partnerCode === myCode)) return;
+  const partnerInterests = partner && partner.interests;
+  const partnerHobbies = partner && partner.hobbies;
   const norm = {
     ts,
     partner: {
-      code: partner.code || partner.id || '',
-      name: partner.name || '',
-      campus: partner.campus || '',
-      country: partner.country || '',
-      background: partner.background || '',
-      interests: Array.isArray(partner.interests) ? partner.interests.slice() : [],
-      hobbies: Array.isArray(partner.hobbies)
-        ? partner.hobbies.slice()
-        : (typeof partner.hobbies === 'string' && partner.hobbies.trim()
-            ? partner.hobbies.split(/[,;|]/).map(h => h.trim()).filter(Boolean)
+      code: partnerCode,
+      name: partner && partner.name ? partner.name : '',
+      campus: partner && partner.campus ? partner.campus : '',
+      country: partner && partner.country ? partner.country : '',
+      background: partner && partner.background ? partner.background : '',
+      interests: Array.isArray(partnerInterests)
+        ? partnerInterests.slice()
+        : (typeof partnerInterests === 'string' && partnerInterests.trim()
+            ? partnerInterests.split(/[,;|]/).map(t => t.trim()).filter(Boolean)
             : []),
-      teams: partner.teams || ''
+      hobbies: Array.isArray(partnerHobbies)
+        ? partnerHobbies.slice()
+        : (typeof partnerHobbies === 'string' && partnerHobbies.trim()
+            ? partnerHobbies.split(/[,;|]/).map(h => h.trim()).filter(Boolean)
+            : []),
+      teams: partner && partner.teams ? partner.teams : (partner && partner.contact ? partner.contact : '')
     }
   };
-  const code = norm.partner.code || (norm.partner.name + '|' + norm.ts);
-  const seen = new Set(matchList.map(m => (m.partner && m.partner.code) ? m.partner.code : ''));
-  if(!seen.has(code)){ matchList.unshift(norm); }
+  const seen = new Set(
+    matchList
+      .map(m => normalizeCode(m && m.partner ? (m.partner.code || m.partner.id || '') : ''))
+      .filter(Boolean)
+  );
+  if(!seen.has(partnerCode)){ matchList.unshift(norm); }
   renderMatches();
 }
 
 function applyServerMatches(serverMatches){
   if(!Array.isArray(serverMatches)) return;
-  matchList = serverMatches.slice().sort((a,b)=> (b.ts||0)-(a.ts||0));
+  const myCode = normalizeCode(joinCode);
+  const normalized = serverMatches
+    .map(entry => {
+      const partner = entry && entry.partner ? entry.partner : {};
+      const code = normalizeCode(partner.code || partner.id || '');
+      if(!code || (myCode && code === myCode)) return null;
+      const partnerInterests = partner.interests;
+      const partnerHobbies = partner.hobbies;
+      return {
+        ts: typeof entry.ts === 'number' ? entry.ts : Date.parse(entry.ts) || Date.now(),
+        partner: {
+          ...partner,
+          code,
+          teams: partner.teams || partner.contact || '',
+          interests: Array.isArray(partnerInterests)
+            ? partnerInterests.slice()
+            : (typeof partnerInterests === 'string' && partnerInterests.trim()
+                ? partnerInterests.split(/[,;|]/).map(t => t.trim()).filter(Boolean)
+                : []),
+          hobbies: Array.isArray(partnerHobbies)
+            ? partnerHobbies.slice()
+            : (typeof partnerHobbies === 'string' && partnerHobbies.trim()
+                ? partnerHobbies.split(/[,;|]/).map(t => t.trim()).filter(Boolean)
+                : [])
+        }
+      };
+    })
+    .filter(Boolean);
+  const seen = new Set();
+  const deduped = [];
+  normalized.forEach(item => {
+    const code = item.partner.code;
+    if(seen.has(code)) return;
+    seen.add(code);
+    deduped.push(item);
+  });
+  matchList = deduped.sort((a,b)=> (b.ts||0)-(a.ts||0));
   renderMatches();
 }
 
