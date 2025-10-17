@@ -1,0 +1,966 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Yoobee Connect · Admin Insights</title>
+  <style>
+    :root {
+      --bg: #020617;
+      --panel: rgba(15, 23, 42, 0.78);
+      --card: rgba(15, 23, 42, 0.9);
+      --border: rgba(148, 163, 184, 0.25);
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-soft: rgba(56, 189, 248, 0.18);
+      --green: #22c55e;
+      --purple: #a855f7;
+      --orange: #f97316;
+      --shadow: 0 30px 60px rgba(2, 6, 23, 0.55);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Inter", system-ui, -apple-system, Segoe UI, sans-serif;
+      background: radial-gradient(circle at 15% 20%, rgba(56,189,248,0.25), transparent 40%),
+                  radial-gradient(circle at 85% 10%, rgba(168,85,247,0.22), transparent 45%),
+                  linear-gradient(180deg, #020617 0%, #0f172a 55%, #111827 100%);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 48px 24px 64px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .shell {
+      width: 100%;
+      max-width: 1180px;
+      display: grid;
+      gap: 24px;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 28px 32px;
+      border-radius: 28px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      backdrop-filter: blur(18px);
+      box-shadow: var(--shadow);
+    }
+    header h1 {
+      margin: 0;
+      font-size: 30px;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+    }
+    header p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 15px;
+    }
+    .actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    button {
+      font: inherit;
+      border: 0;
+      border-radius: 14px;
+      padding: 10px 18px;
+      cursor: pointer;
+      transition: transform 0.16s ease, box-shadow 0.24s ease;
+    }
+    .btn-outline {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #06b6d4, #38bdf8);
+      color: #082f49;
+      font-weight: 600;
+    }
+    button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 12px 28px rgba(2, 132, 199, 0.25);
+    }
+    .grid {
+      display: grid;
+      gap: 24px;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    }
+    .card {
+      padding: 24px 26px;
+      background: var(--card);
+      border: 1px solid rgba(148,163,184,0.22);
+      border-radius: 26px;
+      box-shadow: 0 22px 45px rgba(15, 23, 42, 0.4);
+      backdrop-filter: blur(12px);
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+    .card h2 {
+      margin: 0;
+      font-size: 20px;
+      letter-spacing: 0.4px;
+    }
+    .muted { color: var(--muted); }
+    .stat-group {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 16px;
+    }
+    .stat {
+      background: rgba(148, 163, 184, 0.08);
+      border-radius: 18px;
+      padding: 18px;
+      border: 1px solid rgba(148, 163, 184, 0.12);
+    }
+    .stat .value {
+      font-size: 26px;
+      font-weight: 700;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: rgba(56,189,248,0.18);
+      color: #bae6fd;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
+    }
+    .list {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .pair {
+      padding: 16px;
+      border-radius: 18px;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(148, 163, 184, 0.12);
+    }
+    .pair h3 {
+      margin: 0 0 6px;
+      font-size: 18px;
+    }
+    .chip-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .chip { 
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: rgba(56, 189, 248, 0.12);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      font-size: 13px;
+      color: #e0f2fe;
+    }
+    .table-wrap {
+      width: 100%;
+      overflow-x: auto;
+    }
+    .bar-list {
+      display: grid;
+      gap: 12px;
+    }
+    .bar {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .bar-track {
+      height: 12px;
+      border-radius: 999px;
+      background: rgba(148, 163, 184, 0.15);
+      overflow: hidden;
+    }
+    .bar-fill {
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, rgba(56,189,248,0.9), rgba(6,182,212,0.9));
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    th, td {
+      padding: 10px 12px;
+      text-align: left;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+      vertical-align: top;
+    }
+    th { color: var(--muted); font-weight: 600; }
+    .wide { grid-column: 1 / -1; }
+    .chart-area {
+      position: relative;
+      width: 100%;
+      height: 220px;
+    }
+    .chart-area canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .legend {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: grid;
+      gap: 8px;
+      font-size: 13px;
+    }
+    .legend li {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      background: rgba(148, 163, 184, 0.08);
+      border-radius: 12px;
+      padding: 10px 12px;
+    }
+    .legend-color {
+      width: 12px;
+      height: 12px;
+      border-radius: 999px;
+    }
+    .axis-labels {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .profile-block {
+      display: grid;
+      gap: 8px;
+    }
+    .profile-title {
+      font-weight: 600;
+      font-size: 15px;
+    }
+    .profile-country {
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .detail-label {
+      font-size: 12px;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+      color: rgba(148, 163, 184, 0.9);
+    }
+    .match-id {
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+    .lock-screen {
+      position: fixed;
+      inset: 0;
+      background: rgba(2, 6, 23, 0.95);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+    .lock-card {
+      width: min(90vw, 420px);
+      padding: 32px 28px 36px;
+      border-radius: 28px;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      box-shadow: var(--shadow);
+      display: grid;
+      gap: 18px;
+      text-align: center;
+    }
+    .lock-card h2 {
+      margin: 0;
+      font-size: 24px;
+    }
+    .lock-card input {
+      font: inherit;
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid rgba(148, 163, 184, 0.4);
+      background: rgba(15, 23, 42, 0.8);
+      color: var(--text);
+    }
+    .lock-card input:focus {
+      outline: none;
+      border-color: rgba(56, 189, 248, 0.8);
+      box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.18);
+    }
+    .error {
+      color: #fca5a5;
+      min-height: 20px;
+      font-size: 14px;
+    }
+    @media (max-width: 820px) {
+      header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .actions { width: 100%; }
+      .actions button { flex: 1; }
+    }
+  </style>
+</head>
+<body>
+  <div class="lock-screen" id="lock-screen">
+    <div class="lock-card">
+      <h2>Administrator Access</h2>
+      <p class="muted">Enter the passcode to review matchmaking analytics.</p>
+      <input type="password" id="admin-pass" placeholder="Password" autocomplete="off" />
+      <button class="btn-primary" id="unlock-btn">Unlock dashboard</button>
+      <div class="error" id="lock-error"></div>
+    </div>
+  </div>
+
+  <main class="shell" id="dashboard" style="display:none">
+    <header>
+      <div>
+        <h1>Yoobee Connect · Admin Insights</h1>
+        <p>Live overview of matches, mutual interests, and global reach.</p>
+      </div>
+      <div class="actions">
+        <button class="btn-outline" id="refresh-btn">Refresh Data</button>
+        <button class="btn-primary" id="lock-btn">Lock</button>
+      </div>
+    </header>
+
+    <section class="grid">
+      <article class="card">
+        <div class="badge">Snapshot</div>
+        <div class="stat-group" id="stat-cards"></div>
+      </article>
+
+      <article class="card">
+        <div class="badge">Top shared interests</div>
+        <div class="bar-list" id="interest-bars"></div>
+      </article>
+
+      <article class="card countries-card">
+        <div class="badge">Countries represented</div>
+        <div class="chart-area"><canvas id="country-pie"></canvas></div>
+        <ul class="legend" id="country-legend"></ul>
+        <div class="bar-list" id="country-bars"></div>
+      </article>
+
+      <article class="card">
+        <div class="badge">Match activity</div>
+        <div class="chart-area"><canvas id="match-trend"></canvas></div>
+        <div class="axis-labels" id="match-trend-labels"></div>
+      </article>
+
+      <article class="card">
+        <div class="badge">Recent matched pairs</div>
+        <div class="list" id="pairs-list"></div>
+      </article>
+
+      <article class="card wide">
+        <div class="badge">All matched pairs</div>
+        <div class="muted" style="font-size:13px">Comprehensive overview of every pairing, including their countries, hobbies, and interests.</div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Match</th><th>Participant A</th><th>Participant B</th><th>Shared interests</th><th>Shared hobbies</th></tr>
+            </thead>
+            <tbody id="all-matches-body"></tbody>
+          </table>
+        </div>
+      </article>
+
+      <article class="card wide">
+        <div class="badge">Mutual interest matrix</div>
+        <div class="muted" style="font-size:13px">Showing the most frequent shared topics inside matched pairs.</div>
+        <table>
+          <thead>
+            <tr><th>Interest</th><th>Pairs</th><th>Participants involved</th></tr>
+          </thead>
+          <tbody id="interest-table"></tbody>
+        </table>
+      </article>
+    </section>
+  </main>
+
+  <script>
+    const PASSWORD = "14309";
+
+    const dataset = {
+      generatedAt: new Date().toISOString(),
+      participants: [
+        {
+          name: "Amelia Chen",
+          campus: "Auckland",
+          country: "New Zealand",
+          hobbies: ["Trail running", "Photography", "Urban sketching"],
+          interests: ["UI Design", "Product Strategy", "Hiking", "Photography"]
+        },
+        {
+          name: "Noah Patel",
+          campus: "Wellington",
+          country: "New Zealand",
+          hobbies: ["Photography", "Cooking", "Mountain biking"],
+          interests: ["UI Design", "Hiking", "Film"]
+        },
+        {
+          name: "Mia Clarke",
+          campus: "Melbourne",
+          country: "Australia",
+          hobbies: ["Esports", "Board games", "3D printing"],
+          interests: ["Game Design", "Esports", "3D Art"]
+        },
+        {
+          name: "Lucas Thompson",
+          campus: "Auckland",
+          country: "New Zealand",
+          hobbies: ["Board games", "Figure drawing", "Cafe hopping"],
+          interests: ["3D Art", "Illustration", "Board Games"]
+        },
+        {
+          name: "Isla Martin",
+          campus: "Vancouver",
+          country: "Canada",
+          hobbies: ["Photography", "Cycling", "Yoga"],
+          interests: ["Animation", "Photography", "Travel"]
+        },
+        {
+          name: "Oliver Jackson",
+          campus: "London",
+          country: "United Kingdom",
+          hobbies: ["Photography", "Cycling", "Backpacking"],
+          interests: ["Animation", "Travel", "Cycling"]
+        },
+        {
+          name: "Harper Singh",
+          campus: "Wellington",
+          country: "India",
+          hobbies: ["Coffee roasting", "Short films", "Poetry slams"],
+          interests: ["Film", "Storytelling", "Creative Writing"]
+        },
+        {
+          name: "Leo Walker",
+          campus: "Los Angeles",
+          country: "United States",
+          hobbies: ["Coffee roasting", "Trail hiking", "Podcasting"],
+          interests: ["Storytelling", "Hiking", "Cooking"]
+        },
+        {
+          name: "Ava Rossi",
+          campus: "Florence",
+          country: "Italy",
+          hobbies: ["Photography", "Cycling", "Travel journaling"],
+          interests: ["Photography", "Branding", "Travel"]
+        },
+        {
+          name: "Ethan Wright",
+          campus: "Sydney",
+          country: "Australia",
+          hobbies: ["Cycling", "Surfing", "Music production"],
+          interests: ["Sound Design", "Animation", "Travel"]
+        }
+      ],
+      matches: [
+        {
+          id: "YC-231",
+          pair: ["Amelia Chen", "Noah Patel"],
+          sharedInterests: ["UI Design", "Hiking"],
+          sharedHobbies: ["Photography"],
+          created: "2024-03-02T10:24:00Z"
+        },
+        {
+          id: "YC-232",
+          pair: ["Mia Clarke", "Lucas Thompson"],
+          sharedInterests: ["3D Art"],
+          sharedHobbies: ["Board games"],
+          created: "2024-03-08T11:03:00Z"
+        },
+        {
+          id: "YC-233",
+          pair: ["Isla Martin", "Oliver Jackson"],
+          sharedInterests: ["Animation", "Travel"],
+          sharedHobbies: ["Photography", "Cycling"],
+          created: "2024-03-18T09:18:00Z"
+        },
+        {
+          id: "YC-234",
+          pair: ["Harper Singh", "Leo Walker"],
+          sharedInterests: ["Storytelling"],
+          sharedHobbies: ["Coffee roasting"],
+          created: "2024-04-05T12:02:00Z"
+        },
+        {
+          id: "YC-235",
+          pair: ["Amelia Chen", "Isla Martin"],
+          sharedInterests: ["Photography"],
+          sharedHobbies: ["Photography"],
+          created: "2024-04-22T15:40:00Z"
+        },
+        {
+          id: "YC-236",
+          pair: ["Ava Rossi", "Ethan Wright"],
+          sharedInterests: ["Travel"],
+          sharedHobbies: ["Cycling"],
+          created: "2024-05-04T08:55:00Z"
+        },
+        {
+          id: "YC-237",
+          pair: ["Noah Patel", "Ava Rossi"],
+          sharedInterests: ["Photography"],
+          sharedHobbies: ["Photography"],
+          created: "2024-05-09T14:20:00Z"
+        }
+      ]
+    };
+
+    const participantsByName = Object.fromEntries(dataset.participants.map(person => [person.name, person]));
+    const colorPalette = ['#38bdf8', '#a855f7', '#22c55e', '#f97316', '#facc15', '#ec4899', '#14b8a6', '#f472b6'];
+
+    function unique(array) {
+      return [...new Set(array)];
+    }
+
+    function toChips(items) {
+      if (!items || !items.length) {
+        return '<span class="muted">None recorded</span>';
+      }
+      return items.map(item => `<span class="chip">${item}</span>`).join('');
+    }
+
+    function renderPersonCell(person) {
+      if (!person) {
+        return '<div class="muted">Participant not found</div>';
+      }
+      return `
+        <div class="profile-block">
+          <div class="profile-title">${person.name}</div>
+          <div class="profile-country">${person.country}</div>
+          <div class="detail-label">Hobbies</div>
+          <div class="chip-row">${toChips(person.hobbies)}</div>
+          <div class="detail-label">Interests</div>
+          <div class="chip-row">${toChips(person.interests)}</div>
+        </div>
+      `;
+    }
+
+    function computeStats() {
+      const totalPairs = dataset.matches.length;
+      const totalParticipants = dataset.participants.length;
+      const matchedParticipants = unique(dataset.matches.flatMap(match => match.pair));
+      const countries = {};
+      const interests = {};
+      const timeline = {};
+
+      dataset.matches.forEach(match => {
+        match.pair.forEach(name => {
+          const person = participantsByName[name];
+          if (!person) return;
+          countries[person.country] = (countries[person.country] || 0) + 1;
+        });
+
+        (match.sharedInterests || []).forEach(interest => {
+          interests[interest] = (interests[interest] || 0) + 1;
+        });
+
+        if (match.created) {
+          const dayKey = new Date(match.created).toISOString().slice(0, 10);
+          timeline[dayKey] = (timeline[dayKey] || 0) + 1;
+        }
+      });
+
+      const latestMatch = dataset.matches
+        .slice()
+        .sort((a, b) => new Date(b.created) - new Date(a.created))[0] || null;
+
+      const activeRate = totalParticipants
+        ? Math.round((matchedParticipants.length / totalParticipants) * 100)
+        : 0;
+
+      return {
+        totalPairs,
+        totalParticipants,
+        participantsInMatches: matchedParticipants.length,
+        activeRate,
+        latestMatch: latestMatch ? new Date(latestMatch.created) : null,
+        countries,
+        interests,
+        timeline
+      };
+    }
+
+    function renderStats(stats) {
+      const statCards = document.getElementById('stat-cards');
+      const formatDate = (date) => date ? date.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : 'N/A';
+
+      const statsList = [
+        { label: 'Total participants', value: stats.totalParticipants },
+        { label: 'Pairs matched', value: stats.totalPairs },
+        { label: 'People matched', value: stats.participantsInMatches },
+        { label: 'Active match rate', value: `${stats.activeRate}%` },
+        { label: 'Countries engaged', value: Object.keys(stats.countries).length },
+        { label: 'Last match', value: formatDate(stats.latestMatch) }
+      ];
+
+      statCards.innerHTML = statsList.map(stat => `
+        <div class="stat">
+          <div class="value">${stat.value}</div>
+          <div class="muted">${stat.label}</div>
+        </div>
+      `).join('');
+    }
+
+    function renderPairs() {
+      const list = document.getElementById('pairs-list');
+      if (!dataset.matches.length) {
+        list.innerHTML = '<div class="muted">No matches yet.</div>';
+        return;
+      }
+
+      const formatDate = (date) => new Date(date).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+      const recent = dataset.matches
+        .slice()
+        .sort((a, b) => new Date(b.created) - new Date(a.created))
+        .slice(0, 4);
+
+      list.innerHTML = recent.map(match => {
+        const [first, second] = match.pair.map(name => participantsByName[name] || { name, country: 'Unknown' });
+        return `
+          <div class="pair">
+            <h3>${match.pair.join(' & ')}</h3>
+            <div class="muted" style="font-size:13px">Match ID ${match.id} · ${formatDate(match.created)}</div>
+            <div class="muted" style="font-size:13px">${first.country || 'Unknown'} • ${second.country || 'Unknown'}</div>
+            <div class="detail-label">Shared interests</div>
+            <div class="chip-row">${toChips(match.sharedInterests)}</div>
+            <div class="detail-label">Shared hobbies</div>
+            <div class="chip-row">${toChips(match.sharedHobbies)}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderBars(values, targetId, { unitSingular = 'match', unitPlural = 'matches' } = {}) {
+      const entries = Object.entries(values).sort((a, b) => b[1] - a[1]);
+      const container = document.getElementById(targetId);
+
+      if (!entries.length) {
+        container.innerHTML = '<div class="muted">No data yet.</div>';
+        return;
+      }
+
+      const max = Math.max(...entries.map(([, value]) => value), 1);
+
+      container.innerHTML = entries.map(([key, value]) => {
+        const unit = value === 1 ? unitSingular : unitPlural;
+        return `
+          <div class="bar">
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:14px">
+              <span>${key}</span>
+              <span class="muted">${value} ${unit}</span>
+            </div>
+            <div class="bar-track">
+              <div class="bar-fill" style="width:${(value / max) * 100}%"></div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function drawPieChart(canvasId, entries) {
+      const canvas = document.getElementById(canvasId);
+      const ctx = canvas.getContext('2d');
+      const dpr = window.devicePixelRatio || 1;
+      const width = canvas.clientWidth || canvas.width;
+      const height = canvas.clientHeight || canvas.height;
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
+      ctx.scale(dpr, dpr);
+      ctx.clearRect(0, 0, width, height);
+
+      if (!entries.length) {
+        return;
+      }
+
+      const total = entries.reduce((sum, [, value]) => sum + value, 0);
+      if (total === 0) {
+        return;
+      }
+
+      const centerX = width / 2;
+      const centerY = height / 2;
+      const radius = Math.min(width, height) / 2 - 12;
+      let start = -Math.PI / 2;
+
+      entries.forEach(([label, value], index) => {
+        const angle = (value / total) * Math.PI * 2;
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY);
+        ctx.arc(centerX, centerY, radius, start, start + angle);
+        ctx.closePath();
+        ctx.fillStyle = colorPalette[index % colorPalette.length];
+        ctx.fill();
+        start += angle;
+      });
+
+      const innerRadius = radius * 0.55;
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, innerRadius, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+      ctx.fill();
+
+      ctx.fillStyle = '#e2e8f0';
+      ctx.font = '16px "Inter", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`${total}`, centerX, centerY);
+    }
+
+    function renderCountryVisuals(countries) {
+      const entries = Object.entries(countries).sort((a, b) => b[1] - a[1]);
+      drawPieChart('country-pie', entries);
+
+      const legend = document.getElementById('country-legend');
+      const bars = document.getElementById('country-bars');
+
+      if (!entries.length) {
+        legend.innerHTML = '<li class="muted" style="justify-content:center;">No countries recorded yet.</li>';
+        bars.innerHTML = '<div class="muted">No data yet.</div>';
+        return;
+      }
+
+      legend.innerHTML = entries.map(([country, count], index) => `
+        <li>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span class="legend-color" style="background:${colorPalette[index % colorPalette.length]}"></span>
+            <span>${country}</span>
+          </div>
+          <span class="muted">${count} participant${count === 1 ? '' : 's'}</span>
+        </li>
+      `).join('');
+
+      renderBars(countries, 'country-bars', { unitSingular: 'participant', unitPlural: 'participants' });
+    }
+
+    function renderInterestTable(stats) {
+      const body = document.getElementById('interest-table');
+      const entries = Object.entries(stats.interests).sort((a, b) => b[1] - a[1]);
+
+      if (!entries.length) {
+        body.innerHTML = '<tr><td colspan="3" class="muted">No shared interests yet.</td></tr>';
+        return;
+      }
+
+      const participantsByInterest = {};
+      dataset.matches.forEach(match => {
+        (match.sharedInterests || []).forEach(interest => {
+          if (!participantsByInterest[interest]) {
+            participantsByInterest[interest] = new Set();
+          }
+          match.pair.forEach(name => participantsByInterest[interest].add(name));
+        });
+      });
+
+      body.innerHTML = entries.map(([interest, matches]) => {
+        const participants = participantsByInterest[interest] ? participantsByInterest[interest].size : 0;
+        return `
+          <tr>
+            <td>${interest}</td>
+            <td>${matches}</td>
+            <td>${participants}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function drawLineChart(canvasId, series) {
+      const canvas = document.getElementById(canvasId);
+      const ctx = canvas.getContext('2d');
+      const dpr = window.devicePixelRatio || 1;
+      const width = canvas.clientWidth || canvas.width;
+      const height = canvas.clientHeight || canvas.height;
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
+      ctx.scale(dpr, dpr);
+      ctx.clearRect(0, 0, width, height);
+
+      if (!series.length) {
+        return;
+      }
+
+      const padding = 36;
+      const chartWidth = width - padding * 2;
+      const chartHeight = height - padding * 2;
+      const maxValue = Math.max(...series.map(point => point.value), 1);
+
+      ctx.strokeStyle = 'rgba(148, 163, 184, 0.25)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 4]);
+      const horizontalSteps = 4;
+      for (let i = 0; i <= horizontalSteps; i++) {
+        const y = padding + (chartHeight / horizontalSteps) * i;
+        ctx.beginPath();
+        ctx.moveTo(padding, y);
+        ctx.lineTo(width - padding, y);
+        ctx.stroke();
+      }
+      ctx.setLineDash([]);
+
+      const points = series.map((point, index) => {
+        const x = padding + (series.length > 1 ? (chartWidth / (series.length - 1)) * index : chartWidth / 2);
+        const y = padding + chartHeight - (point.value / maxValue) * chartHeight;
+        return { x, y };
+      });
+
+      ctx.beginPath();
+      ctx.moveTo(points[0].x, padding + chartHeight);
+      points.forEach(point => ctx.lineTo(point.x, point.y));
+      ctx.lineTo(points[points.length - 1].x, padding + chartHeight);
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(56, 189, 248, 0.18)';
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.moveTo(points[0].x, points[0].y);
+      for (let i = 1; i < points.length; i++) {
+        ctx.lineTo(points[i].x, points[i].y);
+      }
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      points.forEach(point => {
+        ctx.beginPath();
+        ctx.arc(point.x, point.y, 4, 0, Math.PI * 2);
+        ctx.fillStyle = '#0ea5e9';
+        ctx.fill();
+        ctx.strokeStyle = '#bae6fd';
+        ctx.stroke();
+      });
+    }
+
+    function renderMatchTrend(timeline) {
+      const labels = document.getElementById('match-trend-labels');
+      const entries = Object.entries(timeline).sort((a, b) => new Date(a[0]) - new Date(b[0]));
+
+      if (!entries.length) {
+        drawLineChart('match-trend', []);
+        labels.innerHTML = '<span class="muted">No match activity yet.</span>';
+        return;
+      }
+
+      let runningTotal = 0;
+      const series = entries.map(([day, count]) => {
+        runningTotal += count;
+        return {
+          label: new Date(day).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+          value: runningTotal
+        };
+      });
+
+      drawLineChart('match-trend', series);
+      labels.innerHTML = series.map(point => `<span><strong>${point.value}</strong> ${point.label}</span>`).join('');
+    }
+
+    function renderAllMatchesTable() {
+      const body = document.getElementById('all-matches-body');
+
+      if (!dataset.matches.length) {
+        body.innerHTML = '<tr><td colspan="5"><div class="muted">No matches found.</div></td></tr>';
+        return;
+      }
+
+      const rows = dataset.matches
+        .slice()
+        .sort((a, b) => new Date(b.created) - new Date(a.created))
+        .map(match => {
+          const [firstName, secondName] = match.pair;
+          const participantA = participantsByName[firstName];
+          const participantB = participantsByName[secondName];
+          return `
+            <tr>
+              <td>
+                <div class="match-id">${match.id}</div>
+                <div class="muted">${new Date(match.created).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}</div>
+              </td>
+              <td>${renderPersonCell(participantA)}</td>
+              <td>${renderPersonCell(participantB)}</td>
+              <td><div class="chip-row">${toChips(match.sharedInterests)}</div></td>
+              <td><div class="chip-row">${toChips(match.sharedHobbies)}</div></td>
+            </tr>
+          `;
+        }).join('');
+
+      body.innerHTML = rows;
+    }
+
+    function renderAll() {
+      const stats = computeStats();
+      renderStats(stats);
+      renderPairs();
+      renderBars(stats.interests, 'interest-bars', { unitSingular: 'match', unitPlural: 'matches' });
+      renderCountryVisuals(stats.countries);
+      renderInterestTable(stats);
+      renderMatchTrend(stats.timeline);
+      renderAllMatchesTable();
+    }
+
+    function unlockDashboard() {
+      const input = document.getElementById('admin-pass');
+      const error = document.getElementById('lock-error');
+      if (input.value.trim() === PASSWORD) {
+        document.getElementById('lock-screen').style.display = 'none';
+        document.getElementById('dashboard').style.display = 'grid';
+        renderAll();
+        input.value = '';
+        error.textContent = '';
+      } else {
+        error.textContent = 'Incorrect password. Access denied.';
+        input.value = '';
+        input.focus();
+      }
+    }
+
+    document.getElementById('unlock-btn').addEventListener('click', unlockDashboard);
+    document.getElementById('admin-pass').addEventListener('keypress', (event) => {
+      if (event.key === 'Enter') {
+        unlockDashboard();
+      }
+    });
+
+    document.getElementById('lock-btn').addEventListener('click', () => {
+      document.getElementById('dashboard').style.display = 'none';
+      document.getElementById('lock-screen').style.display = 'flex';
+      const input = document.getElementById('admin-pass');
+      input.value = '';
+      input.focus();
+    });
+
+    document.getElementById('refresh-btn').addEventListener('click', () => {
+      renderAll();
+      const btn = document.getElementById('refresh-btn');
+      btn.textContent = 'Refreshed';
+      btn.disabled = true;
+      setTimeout(() => {
+        btn.textContent = 'Refresh Data';
+        btn.disabled = false;
+      }, 1600);
+    });
+
+    window.addEventListener('load', () => {
+      document.getElementById('admin-pass').focus();
+    });
+  </script>
+</body>
+</html>
