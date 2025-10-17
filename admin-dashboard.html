@@ -105,6 +105,11 @@
       flex-direction: column;
       gap: 18px;
     }
+    .table-wrapper {
+      width: 100%;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
     .card h2 {
       margin: 0;
       font-size: 20px;
@@ -138,21 +143,6 @@
       font-weight: 600;
       letter-spacing: 0.3px;
       text-transform: uppercase;
-    }
-    .list {
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-    }
-    .pair {
-      padding: 16px;
-      border-radius: 18px;
-      background: rgba(15, 23, 42, 0.6);
-      border: 1px solid rgba(148, 163, 184, 0.12);
-    }
-    .pair h3 {
-      margin: 0 0 6px;
-      font-size: 18px;
     }
     .chip-row {
       display: flex;
@@ -191,6 +181,28 @@
       width: 100%;
       border-collapse: collapse;
       font-size: 14px;
+    }
+    .matches td {
+      vertical-align: top;
+    }
+    .match-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .person {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .person-name {
+      font-weight: 600;
+    }
+    .person-meta {
+      font-size: 12px;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+      color: rgba(148, 163, 184, 0.85);
     }
     th, td {
       padding: 10px 12px;
@@ -285,13 +297,30 @@
       </article>
 
       <article class="card">
-        <div class="badge">Counties represented</div>
-        <div class="bar-list" id="county-bars"></div>
+        <div class="badge">Countries represented</div>
+        <div class="bar-list" id="country-bars"></div>
       </article>
 
       <article class="card">
-        <div class="badge">Recent matched pairs</div>
-        <div class="list" id="pairs-list"></div>
+        <div class="badge">Hobby participation</div>
+        <div class="bar-list" id="hobby-bars"></div>
+      </article>
+
+      <article class="card">
+        <div class="badge">All matched pairs</div>
+        <div class="table-wrapper">
+          <table class="matches">
+            <thead>
+              <tr>
+                <th>Match ID</th>
+                <th>Participant A</th>
+                <th>Participant B</th>
+                <th>Shared interests</th>
+              </tr>
+            </thead>
+            <tbody id="matches-table"></tbody>
+          </table>
+        </div>
       </article>
 
       <article class="card">
@@ -313,46 +342,94 @@
     const dataset = {
       generatedAt: new Date().toISOString(),
       participants: [
-        { name: "Amelia Chen", campus: "Auckland", county: "Auckland", interests: ["UI Design", "Photography", "Hiking"] },
-        { name: "Noah Patel", campus: "Wellington", county: "Wellington", interests: ["UI Design", "Hiking", "Film"] },
-        { name: "Mia Clarke", campus: "Christchurch", county: "Canterbury", interests: ["Game Design", "Esports", "3D Art"] },
-        { name: "Lucas Thompson", campus: "Auckland", county: "Auckland", interests: ["3D Art", "Illustration", "Board Games"] },
-        { name: "Isla Martin", campus: "Tauranga", county: "Bay of Plenty", interests: ["Animation", "Photography", "Travel"] },
-        { name: "Oliver Jackson", campus: "Dunedin", county: "Otago", interests: ["Animation", "Travel", "Cycling"] },
-        { name: "Harper Singh", campus: "Wellington", county: "Wellington", interests: ["Film", "Storytelling", "Coffee"] },
-        { name: "Leo Walker", campus: "Hamilton", county: "Waikato", interests: ["Storytelling", "Hiking", "Cooking"] }
+        {
+          name: "Amelia Chen",
+          campus: "Auckland",
+          country: "New Zealand",
+          interests: ["UI Design", "Photography", "Hiking"],
+          hobbies: ["Trail running", "Indie films", "Urban sketching"]
+        },
+        {
+          name: "Noah Patel",
+          campus: "Wellington",
+          country: "India",
+          interests: ["UI Design", "Hiking", "Film"],
+          hobbies: ["Rock climbing", "Fusion cooking", "Street photography"]
+        },
+        {
+          name: "Mia Clarke",
+          campus: "Christchurch",
+          country: "United Kingdom",
+          interests: ["Game Design", "Esports", "3D Art"],
+          hobbies: ["Esports shoutcasting", "Cosplay", "Miniature painting"]
+        },
+        {
+          name: "Lucas Thompson",
+          campus: "Auckland",
+          country: "New Zealand",
+          interests: ["3D Art", "Illustration", "Board Games"],
+          hobbies: ["Board game design", "Cycling", "Coffee roasting"]
+        },
+        {
+          name: "Isla Martin",
+          campus: "Tauranga",
+          country: "Australia",
+          interests: ["Animation", "Photography", "Travel"],
+          hobbies: ["Landscape photography", "Travel vlogging", "Freediving"]
+        },
+        {
+          name: "Oliver Jackson",
+          campus: "Dunedin",
+          country: "New Zealand",
+          interests: ["Animation", "Travel", "Cycling"],
+          hobbies: ["Gravel biking", "Culinary tours", "Podcasting"]
+        },
+        {
+          name: "Harper Singh",
+          campus: "Wellington",
+          country: "Canada",
+          interests: ["Film", "Storytelling", "Coffee"],
+          hobbies: ["Screenwriting", "Latte art", "Calligraphy"]
+        },
+        {
+          name: "Leo Walker",
+          campus: "Hamilton",
+          country: "United States",
+          interests: ["Storytelling", "Hiking", "Cooking"],
+          hobbies: ["Plant-based cooking", "Backpacking", "Digital illustration"]
+        }
       ],
       matches: [
         {
           id: "YC-231",
           pair: ["Amelia Chen", "Noah Patel"],
           mutual: ["UI Design", "Hiking"],
-          county: "Auckland",
           created: "2024-05-12T10:24:00Z"
         },
         {
           id: "YC-232",
           pair: ["Mia Clarke", "Lucas Thompson"],
           mutual: ["3D Art"],
-          county: "Auckland",
           created: "2024-05-12T11:03:00Z"
         },
         {
           id: "YC-233",
           pair: ["Isla Martin", "Oliver Jackson"],
           mutual: ["Animation", "Travel"],
-          county: "Otago",
           created: "2024-05-12T11:28:00Z"
         },
         {
           id: "YC-234",
           pair: ["Harper Singh", "Leo Walker"],
           mutual: ["Storytelling"],
-          county: "Wellington",
           created: "2024-05-12T12:02:00Z"
         }
       ]
     };
+
+    const participantIndex = Object.fromEntries(
+      dataset.participants.map((participant) => [participant.name, participant])
+    );
 
     function unique(array) {
       return [...new Set(array)];
@@ -361,12 +438,22 @@
     function computeStats() {
       const totalPairs = dataset.matches.length;
       const participantsInMatches = unique(dataset.matches.flatMap(match => match.pair));
-      const counties = {};
+      const countries = {};
       const interests = {};
+      const hobbies = {};
       dataset.matches.forEach(match => {
-        counties[match.county] = (counties[match.county] || 0) + 1;
         match.mutual.forEach(interest => {
           interests[interest] = (interests[interest] || 0) + 1;
+        });
+        match.pair.forEach(name => {
+          const participant = participantIndex[name];
+          if (!participant) return;
+          if (participant.country) {
+            countries[participant.country] = (countries[participant.country] || 0) + 1;
+          }
+          (participant.hobbies || []).forEach(hobby => {
+            hobbies[hobby] = (hobbies[hobby] || 0) + 1;
+          });
         });
       });
 
@@ -380,14 +467,15 @@
         participantsInMatches: participantsInMatches.length,
         activeRate,
         latestMatch: recentMatch ? new Date(recentMatch.created) : null,
-        counties,
-        interests
+        countries,
+        interests,
+        hobbies
       };
     }
 
-    function renderStats() {
+    function renderStats(stats) {
       const statCards = document.getElementById('stat-cards');
-      const { totalPairs, totalParticipants, participantsInMatches, activeRate, latestMatch } = computeStats();
+      const { totalPairs, totalParticipants, participantsInMatches, activeRate, latestMatch } = stats;
 
       const formatDate = (date) => date ? date.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : 'N/A';
 
@@ -407,27 +495,54 @@
       `).join('');
     }
 
-    function renderPairs() {
-      const list = document.getElementById('pairs-list');
-      list.innerHTML = dataset.matches.map(match => `
-        <div class="pair">
-          <h3>${match.pair.join(' & ')}</h3>
-          <div class="muted" style="font-size:13px">Match ID ${match.id} · ${new Date(match.created).toLocaleString()}</div>
-          <div class="chip-row">
-            ${match.mutual.map(item => `<span class="chip">${item}</span>`).join('')}
-          </div>
-        </div>
-      `).join('');
+    function renderMatchesTable() {
+      const body = document.getElementById('matches-table');
+      body.innerHTML = dataset.matches
+        .slice()
+        .sort((a, b) => new Date(b.created) - new Date(a.created))
+        .map(match => {
+          const [first, second] = match.pair.map(name => participantIndex[name]);
+          const participantCell = participant => `
+            <div class="person">
+              <div class="person-name">${participant?.name ?? 'Unknown'}</div>
+              ${participant ? `<div class="muted">Country: ${participant.country}</div>` : ''}
+              ${participant && participant.hobbies && participant.hobbies.length ? `
+                <div class="person-meta">Hobbies</div>
+                <div class="chip-row">
+                  ${participant.hobbies.map(hobby => `<span class="chip">${hobby}</span>`).join('')}
+                </div>
+              ` : ''}
+            </div>
+          `;
+          return `
+            <tr>
+              <td>
+                <div class="match-meta">
+                  <strong>${match.id}</strong>
+                  <div class="muted">${new Date(match.created).toLocaleString()}</div>
+                </div>
+              </td>
+              <td>${participantCell(first)}</td>
+              <td>${participantCell(second)}</td>
+              <td>
+                <div class="chip-row">
+                  ${match.mutual.map(item => `<span class="chip">${item}</span>`).join('')}
+                </div>
+              </td>
+            </tr>
+          `;
+        })
+        .join('');
     }
 
-    function renderBars(values, targetId) {
+    function renderBars(values, targetId, unit = 'matches') {
       const max = Math.max(...Object.values(values), 1);
       const entries = Object.entries(values).sort((a, b) => b[1] - a[1]);
       document.getElementById(targetId).innerHTML = entries.map(([key, value]) => `
         <div class="bar">
           <div style="display:flex;justify-content:space-between;align-items:center;font-size:14px">
             <span>${key}</span>
-            <span class="muted">${value} match${value === 1 ? '' : 'es'}</span>
+            <span class="muted">${value} ${unit}${value === 1 ? '' : 's'}</span>
           </div>
           <div class="bar-track">
             <div class="bar-fill" style="width:${(value / max) * 100}%"></div>
@@ -436,8 +551,8 @@
       `).join('');
     }
 
-    function renderInterestTable() {
-      const { interests } = computeStats();
+    function renderInterestTable(stats) {
+      const { interests } = stats;
       const participantsByInterest = {};
       dataset.matches.forEach(match => {
         match.mutual.forEach(interest => {
@@ -463,11 +578,12 @@
 
     function renderAll() {
       const stats = computeStats();
-      renderStats();
-      renderPairs();
-      renderBars(stats.interests, 'interest-bars');
-      renderBars(stats.counties, 'county-bars');
-      renderInterestTable();
+      renderStats(stats);
+      renderMatchesTable();
+      renderBars(stats.interests, 'interest-bars', 'matches');
+      renderBars(stats.countries, 'country-bars', 'participants');
+      renderBars(stats.hobbies, 'hobby-bars', 'participants');
+      renderInterestTable(stats);
     }
 
     function unlockDashboard() {
