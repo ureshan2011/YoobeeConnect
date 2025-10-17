@@ -555,7 +555,7 @@ function sanitizeImageData(v){
   var trimmed = s.trim();
   var match = trimmed.match(/^data:image\/(png|jpe?g|webp);base64,/i);
   if(!match) return '';
-  var maxLength = 48000; // Google Sheets cell limit (~50k chars)
+  var maxLength = 220000; // ~160KB payload after base64
   if(trimmed.length > maxLength) return '';
   var prefix = match[0];
   var payload = trimmed.substring(prefix.length).replace(/\s+/g, '');

@@ -473,10 +473,8 @@ let matchPollTimer = null;
 const MATCH_POLL_MS = 15000;
 
 const PHOTO_MAX_DIM = 512;
-// Google Sheets cells cap out at 50k characters, so we keep the encoded photo
-// safely below that (≈35 KB once decoded).
-const PHOTO_MAX_BYTES = 36 * 1024;
-const PHOTO_MAX_CHAR_LENGTH = 48000;
+const PHOTO_MAX_BYTES = 150 * 1024;
+const PHOTO_MAX_CHAR_LENGTH = 220000;
 
 /* ==========================
    DOM helpers
@@ -570,15 +568,15 @@ async function compressImageFile(file){
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, width, height);
   ctx.drawImage(img, 0, 0, width, height);
-  let quality = 0.82;
+  let quality = 0.8;
   let output = canvas.toDataURL('image/jpeg', quality);
-  const fitsLimits = data => data.length <= PHOTO_MAX_CHAR_LENGTH && estimateBase64Bytes(data) <= PHOTO_MAX_BYTES;
-  for(let i=0;i<8 && !fitsLimits(output);i++){
-    quality = Math.max(0.32, quality - 0.1);
+  for(let i=0;i<5 && estimateBase64Bytes(output) > PHOTO_MAX_BYTES;i++){
+    quality -= 0.12;
+    if(quality < 0.35){ break; }
     output = canvas.toDataURL('image/jpeg', quality);
   }
-  if(!fitsLimits(output)){
-    throw new Error('Photo is too large even after compression. Please choose an image under 35 KB.');
+  if(estimateBase64Bytes(output) > PHOTO_MAX_BYTES){
+    throw new Error('Photo is too large even after compression. Please choose a smaller image.');
   }
   return output;
 }
