@@ -479,7 +479,7 @@
 
       const formatDate = (date) => date ? date.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : 'N/A';
 
-      const stats = [
+      const statItems = [
         { label: 'Total participants', value: totalParticipants },
         { label: 'Pairs matched', value: totalPairs },
         { label: 'People matched', value: participantsInMatches },
@@ -487,7 +487,7 @@
         { label: 'Last match', value: formatDate(latestMatch) }
       ];
 
-      statCards.innerHTML = stats.map(stat => `
+      statCards.innerHTML = statItems.map(stat => `
         <div class="stat">
           <div class="value">${stat.value}</div>
           <div class="muted">${stat.label}</div>
