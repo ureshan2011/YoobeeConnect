@@ -579,13 +579,13 @@ function renderMatchHistory(history){
     if(partner.teams){
       const actions = document.createElement('div');
       actions.className = 'match-entry-actions';
-      const link = document.createElement('a');
-      link.href = `https://teams.microsoft.com/l/chat/0/0?users=${encodeURIComponent(partner.teams)}`;
-      link.target = '_blank';
-      link.rel = 'noopener';
-      link.className = 'btn';
-      link.textContent = 'Open Teams chat';
-      actions.appendChild(link);
+      const label = document.createElement('span');
+      label.textContent = 'Connect via email or Teams: ';
+      const emailLink = document.createElement('a');
+      emailLink.href = `mailto:${partner.teams}`;
+      emailLink.textContent = partner.teams;
+      actions.appendChild(label);
+      actions.appendChild(emailLink);
       item.appendChild(actions);
     }else{
       const fallback = document.createElement('div');
