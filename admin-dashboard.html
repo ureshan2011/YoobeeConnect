@@ -159,17 +159,13 @@
       flex-wrap: wrap;
       gap: 8px;
     }
-    .chip { 
+    .chip {
       padding: 6px 12px;
       border-radius: 999px;
       background: rgba(56, 189, 248, 0.12);
       border: 1px solid rgba(56, 189, 248, 0.25);
       font-size: 13px;
       color: #e0f2fe;
-    }
-    .table-wrap {
-      width: 100%;
-      overflow-x: auto;
     }
     .bar-list {
       display: grid;
@@ -200,72 +196,8 @@
       padding: 10px 12px;
       text-align: left;
       border-bottom: 1px solid rgba(148, 163, 184, 0.16);
-      vertical-align: top;
     }
     th { color: var(--muted); font-weight: 600; }
-    .wide { grid-column: 1 / -1; }
-    .chart-area {
-      position: relative;
-      width: 100%;
-      height: 220px;
-    }
-    .chart-area canvas {
-      width: 100%;
-      height: 100%;
-      display: block;
-    }
-    .legend {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-      display: grid;
-      gap: 8px;
-      font-size: 13px;
-    }
-    .legend li {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      background: rgba(148, 163, 184, 0.08);
-      border-radius: 12px;
-      padding: 10px 12px;
-    }
-    .legend-color {
-      width: 12px;
-      height: 12px;
-      border-radius: 999px;
-    }
-    .axis-labels {
-      display: flex;
-      justify-content: space-between;
-      gap: 12px;
-      flex-wrap: wrap;
-      font-size: 12px;
-      color: var(--muted);
-    }
-    .profile-block {
-      display: grid;
-      gap: 8px;
-    }
-    .profile-title {
-      font-weight: 600;
-      font-size: 15px;
-    }
-    .profile-country {
-      font-size: 13px;
-      color: var(--muted);
-    }
-    .detail-label {
-      font-size: 12px;
-      letter-spacing: 0.4px;
-      text-transform: uppercase;
-      color: rgba(148, 163, 184, 0.9);
-    }
-    .match-id {
-      font-weight: 600;
-      margin-bottom: 6px;
-    }
     .lock-screen {
       position: fixed;
       inset: 0;
@@ -333,7 +265,7 @@
     <header>
       <div>
         <h1>Yoobee Connect · Admin Insights</h1>
-        <p>Live overview of matches, mutual interests, and global reach.</p>
+        <p>Live overview of matches, mutual interests, and campus distribution.</p>
       </div>
       <div class="actions">
         <button class="btn-outline" id="refresh-btn">Refresh Data</button>
@@ -352,17 +284,9 @@
         <div class="bar-list" id="interest-bars"></div>
       </article>
 
-      <article class="card countries-card">
-        <div class="badge">Countries represented</div>
-        <div class="chart-area"><canvas id="country-pie"></canvas></div>
-        <ul class="legend" id="country-legend"></ul>
-        <div class="bar-list" id="country-bars"></div>
-      </article>
-
       <article class="card">
-        <div class="badge">Match activity</div>
-        <div class="chart-area"><canvas id="match-trend"></canvas></div>
-        <div class="axis-labels" id="match-trend-labels"></div>
+        <div class="badge">Counties represented</div>
+        <div class="bar-list" id="county-bars"></div>
       </article>
 
       <article class="card">
@@ -370,20 +294,7 @@
         <div class="list" id="pairs-list"></div>
       </article>
 
-      <article class="card wide">
-        <div class="badge">All matched pairs</div>
-        <div class="muted" style="font-size:13px">Comprehensive overview of every pairing, including their countries, hobbies, and interests.</div>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr><th>Match</th><th>Participant A</th><th>Participant B</th><th>Shared interests</th><th>Shared hobbies</th></tr>
-            </thead>
-            <tbody id="all-matches-body"></tbody>
-          </table>
-        </div>
-      </article>
-
-      <article class="card wide">
+      <article class="card">
         <div class="badge">Mutual interest matrix</div>
         <div class="muted" style="font-size:13px">Showing the most frequent shared topics inside matched pairs.</div>
         <table>
@@ -402,219 +313,93 @@
     const dataset = {
       generatedAt: new Date().toISOString(),
       participants: [
-        {
-          name: "Amelia Chen",
-          campus: "Auckland",
-          country: "New Zealand",
-          hobbies: ["Trail running", "Photography", "Urban sketching"],
-          interests: ["UI Design", "Product Strategy", "Hiking", "Photography"]
-        },
-        {
-          name: "Noah Patel",
-          campus: "Wellington",
-          country: "New Zealand",
-          hobbies: ["Photography", "Cooking", "Mountain biking"],
-          interests: ["UI Design", "Hiking", "Film"]
-        },
-        {
-          name: "Mia Clarke",
-          campus: "Melbourne",
-          country: "Australia",
-          hobbies: ["Esports", "Board games", "3D printing"],
-          interests: ["Game Design", "Esports", "3D Art"]
-        },
-        {
-          name: "Lucas Thompson",
-          campus: "Auckland",
-          country: "New Zealand",
-          hobbies: ["Board games", "Figure drawing", "Cafe hopping"],
-          interests: ["3D Art", "Illustration", "Board Games"]
-        },
-        {
-          name: "Isla Martin",
-          campus: "Vancouver",
-          country: "Canada",
-          hobbies: ["Photography", "Cycling", "Yoga"],
-          interests: ["Animation", "Photography", "Travel"]
-        },
-        {
-          name: "Oliver Jackson",
-          campus: "London",
-          country: "United Kingdom",
-          hobbies: ["Photography", "Cycling", "Backpacking"],
-          interests: ["Animation", "Travel", "Cycling"]
-        },
-        {
-          name: "Harper Singh",
-          campus: "Wellington",
-          country: "India",
-          hobbies: ["Coffee roasting", "Short films", "Poetry slams"],
-          interests: ["Film", "Storytelling", "Creative Writing"]
-        },
-        {
-          name: "Leo Walker",
-          campus: "Los Angeles",
-          country: "United States",
-          hobbies: ["Coffee roasting", "Trail hiking", "Podcasting"],
-          interests: ["Storytelling", "Hiking", "Cooking"]
-        },
-        {
-          name: "Ava Rossi",
-          campus: "Florence",
-          country: "Italy",
-          hobbies: ["Photography", "Cycling", "Travel journaling"],
-          interests: ["Photography", "Branding", "Travel"]
-        },
-        {
-          name: "Ethan Wright",
-          campus: "Sydney",
-          country: "Australia",
-          hobbies: ["Cycling", "Surfing", "Music production"],
-          interests: ["Sound Design", "Animation", "Travel"]
-        }
+        { name: "Amelia Chen", campus: "Auckland", county: "Auckland", interests: ["UI Design", "Photography", "Hiking"] },
+        { name: "Noah Patel", campus: "Wellington", county: "Wellington", interests: ["UI Design", "Hiking", "Film"] },
+        { name: "Mia Clarke", campus: "Christchurch", county: "Canterbury", interests: ["Game Design", "Esports", "3D Art"] },
+        { name: "Lucas Thompson", campus: "Auckland", county: "Auckland", interests: ["3D Art", "Illustration", "Board Games"] },
+        { name: "Isla Martin", campus: "Tauranga", county: "Bay of Plenty", interests: ["Animation", "Photography", "Travel"] },
+        { name: "Oliver Jackson", campus: "Dunedin", county: "Otago", interests: ["Animation", "Travel", "Cycling"] },
+        { name: "Harper Singh", campus: "Wellington", county: "Wellington", interests: ["Film", "Storytelling", "Coffee"] },
+        { name: "Leo Walker", campus: "Hamilton", county: "Waikato", interests: ["Storytelling", "Hiking", "Cooking"] }
       ],
       matches: [
         {
           id: "YC-231",
           pair: ["Amelia Chen", "Noah Patel"],
-          sharedInterests: ["UI Design", "Hiking"],
-          sharedHobbies: ["Photography"],
-          created: "2024-03-02T10:24:00Z"
+          mutual: ["UI Design", "Hiking"],
+          county: "Auckland",
+          created: "2024-05-12T10:24:00Z"
         },
         {
           id: "YC-232",
           pair: ["Mia Clarke", "Lucas Thompson"],
-          sharedInterests: ["3D Art"],
-          sharedHobbies: ["Board games"],
-          created: "2024-03-08T11:03:00Z"
+          mutual: ["3D Art"],
+          county: "Auckland",
+          created: "2024-05-12T11:03:00Z"
         },
         {
           id: "YC-233",
           pair: ["Isla Martin", "Oliver Jackson"],
-          sharedInterests: ["Animation", "Travel"],
-          sharedHobbies: ["Photography", "Cycling"],
-          created: "2024-03-18T09:18:00Z"
+          mutual: ["Animation", "Travel"],
+          county: "Otago",
+          created: "2024-05-12T11:28:00Z"
         },
         {
           id: "YC-234",
           pair: ["Harper Singh", "Leo Walker"],
-          sharedInterests: ["Storytelling"],
-          sharedHobbies: ["Coffee roasting"],
-          created: "2024-04-05T12:02:00Z"
-        },
-        {
-          id: "YC-235",
-          pair: ["Amelia Chen", "Isla Martin"],
-          sharedInterests: ["Photography"],
-          sharedHobbies: ["Photography"],
-          created: "2024-04-22T15:40:00Z"
-        },
-        {
-          id: "YC-236",
-          pair: ["Ava Rossi", "Ethan Wright"],
-          sharedInterests: ["Travel"],
-          sharedHobbies: ["Cycling"],
-          created: "2024-05-04T08:55:00Z"
-        },
-        {
-          id: "YC-237",
-          pair: ["Noah Patel", "Ava Rossi"],
-          sharedInterests: ["Photography"],
-          sharedHobbies: ["Photography"],
-          created: "2024-05-09T14:20:00Z"
+          mutual: ["Storytelling"],
+          county: "Wellington",
+          created: "2024-05-12T12:02:00Z"
         }
       ]
     };
-
-    const participantsByName = Object.fromEntries(dataset.participants.map(person => [person.name, person]));
-    const colorPalette = ['#38bdf8', '#a855f7', '#22c55e', '#f97316', '#facc15', '#ec4899', '#14b8a6', '#f472b6'];
 
     function unique(array) {
       return [...new Set(array)];
     }
 
-    function toChips(items) {
-      if (!items || !items.length) {
-        return '<span class="muted">None recorded</span>';
-      }
-      return items.map(item => `<span class="chip">${item}</span>`).join('');
-    }
-
-    function renderPersonCell(person) {
-      if (!person) {
-        return '<div class="muted">Participant not found</div>';
-      }
-      return `
-        <div class="profile-block">
-          <div class="profile-title">${person.name}</div>
-          <div class="profile-country">${person.country}</div>
-          <div class="detail-label">Hobbies</div>
-          <div class="chip-row">${toChips(person.hobbies)}</div>
-          <div class="detail-label">Interests</div>
-          <div class="chip-row">${toChips(person.interests)}</div>
-        </div>
-      `;
-    }
-
     function computeStats() {
       const totalPairs = dataset.matches.length;
-      const totalParticipants = dataset.participants.length;
-      const matchedParticipants = unique(dataset.matches.flatMap(match => match.pair));
-      const countries = {};
+      const participantsInMatches = unique(dataset.matches.flatMap(match => match.pair));
+      const counties = {};
       const interests = {};
-      const timeline = {};
-
       dataset.matches.forEach(match => {
-        match.pair.forEach(name => {
-          const person = participantsByName[name];
-          if (!person) return;
-          countries[person.country] = (countries[person.country] || 0) + 1;
-        });
-
-        (match.sharedInterests || []).forEach(interest => {
+        counties[match.county] = (counties[match.county] || 0) + 1;
+        match.mutual.forEach(interest => {
           interests[interest] = (interests[interest] || 0) + 1;
         });
-
-        if (match.created) {
-          const dayKey = new Date(match.created).toISOString().slice(0, 10);
-          timeline[dayKey] = (timeline[dayKey] || 0) + 1;
-        }
       });
 
-      const latestMatch = dataset.matches
-        .slice()
-        .sort((a, b) => new Date(b.created) - new Date(a.created))[0] || null;
-
-      const activeRate = totalParticipants
-        ? Math.round((matchedParticipants.length / totalParticipants) * 100)
-        : 0;
+      const recentMatch = dataset.matches.at(-1);
+      const totalParticipants = dataset.participants.length;
+      const activeRate = Math.round((participantsInMatches.length / totalParticipants) * 100);
 
       return {
         totalPairs,
         totalParticipants,
-        participantsInMatches: matchedParticipants.length,
+        participantsInMatches: participantsInMatches.length,
         activeRate,
-        latestMatch: latestMatch ? new Date(latestMatch.created) : null,
-        countries,
-        interests,
-        timeline
+        latestMatch: recentMatch ? new Date(recentMatch.created) : null,
+        counties,
+        interests
       };
     }
 
-    function renderStats(stats) {
+    function renderStats() {
       const statCards = document.getElementById('stat-cards');
+      const { totalPairs, totalParticipants, participantsInMatches, activeRate, latestMatch } = computeStats();
+
       const formatDate = (date) => date ? date.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : 'N/A';
 
-      const statsList = [
-        { label: 'Total participants', value: stats.totalParticipants },
-        { label: 'Pairs matched', value: stats.totalPairs },
-        { label: 'People matched', value: stats.participantsInMatches },
-        { label: 'Active match rate', value: `${stats.activeRate}%` },
-        { label: 'Countries engaged', value: Object.keys(stats.countries).length },
-        { label: 'Last match', value: formatDate(stats.latestMatch) }
+      const stats = [
+        { label: 'Total participants', value: totalParticipants },
+        { label: 'Pairs matched', value: totalPairs },
+        { label: 'People matched', value: participantsInMatches },
+        { label: 'Active match rate', value: `${activeRate}%` },
+        { label: 'Last match', value: formatDate(latestMatch) }
       ];
 
-      statCards.innerHTML = statsList.map(stat => `
+      statCards.innerHTML = stats.map(stat => `
         <div class="stat">
           <div class="value">${stat.value}</div>
           <div class="muted">${stat.label}</div>
@@ -624,296 +409,65 @@
 
     function renderPairs() {
       const list = document.getElementById('pairs-list');
-      if (!dataset.matches.length) {
-        list.innerHTML = '<div class="muted">No matches yet.</div>';
-        return;
-      }
-
-      const formatDate = (date) => new Date(date).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
-      const recent = dataset.matches
-        .slice()
-        .sort((a, b) => new Date(b.created) - new Date(a.created))
-        .slice(0, 4);
-
-      list.innerHTML = recent.map(match => {
-        const [first, second] = match.pair.map(name => participantsByName[name] || { name, country: 'Unknown' });
-        return `
-          <div class="pair">
-            <h3>${match.pair.join(' & ')}</h3>
-            <div class="muted" style="font-size:13px">Match ID ${match.id} · ${formatDate(match.created)}</div>
-            <div class="muted" style="font-size:13px">${first.country || 'Unknown'} • ${second.country || 'Unknown'}</div>
-            <div class="detail-label">Shared interests</div>
-            <div class="chip-row">${toChips(match.sharedInterests)}</div>
-            <div class="detail-label">Shared hobbies</div>
-            <div class="chip-row">${toChips(match.sharedHobbies)}</div>
+      list.innerHTML = dataset.matches.map(match => `
+        <div class="pair">
+          <h3>${match.pair.join(' & ')}</h3>
+          <div class="muted" style="font-size:13px">Match ID ${match.id} · ${new Date(match.created).toLocaleString()}</div>
+          <div class="chip-row">
+            ${match.mutual.map(item => `<span class="chip">${item}</span>`).join('')}
           </div>
-        `;
-      }).join('');
-    }
-
-    function renderBars(values, targetId, { unitSingular = 'match', unitPlural = 'matches' } = {}) {
-      const entries = Object.entries(values).sort((a, b) => b[1] - a[1]);
-      const container = document.getElementById(targetId);
-
-      if (!entries.length) {
-        container.innerHTML = '<div class="muted">No data yet.</div>';
-        return;
-      }
-
-      const max = Math.max(...entries.map(([, value]) => value), 1);
-
-      container.innerHTML = entries.map(([key, value]) => {
-        const unit = value === 1 ? unitSingular : unitPlural;
-        return `
-          <div class="bar">
-            <div style="display:flex;justify-content:space-between;align-items:center;font-size:14px">
-              <span>${key}</span>
-              <span class="muted">${value} ${unit}</span>
-            </div>
-            <div class="bar-track">
-              <div class="bar-fill" style="width:${(value / max) * 100}%"></div>
-            </div>
-          </div>
-        `;
-      }).join('');
-    }
-
-    function drawPieChart(canvasId, entries) {
-      const canvas = document.getElementById(canvasId);
-      const ctx = canvas.getContext('2d');
-      const dpr = window.devicePixelRatio || 1;
-      const width = canvas.clientWidth || canvas.width;
-      const height = canvas.clientHeight || canvas.height;
-      canvas.width = width * dpr;
-      canvas.height = height * dpr;
-      ctx.scale(dpr, dpr);
-      ctx.clearRect(0, 0, width, height);
-
-      if (!entries.length) {
-        return;
-      }
-
-      const total = entries.reduce((sum, [, value]) => sum + value, 0);
-      if (total === 0) {
-        return;
-      }
-
-      const centerX = width / 2;
-      const centerY = height / 2;
-      const radius = Math.min(width, height) / 2 - 12;
-      let start = -Math.PI / 2;
-
-      entries.forEach(([label, value], index) => {
-        const angle = (value / total) * Math.PI * 2;
-        ctx.beginPath();
-        ctx.moveTo(centerX, centerY);
-        ctx.arc(centerX, centerY, radius, start, start + angle);
-        ctx.closePath();
-        ctx.fillStyle = colorPalette[index % colorPalette.length];
-        ctx.fill();
-        start += angle;
-      });
-
-      const innerRadius = radius * 0.55;
-      ctx.beginPath();
-      ctx.arc(centerX, centerY, innerRadius, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
-      ctx.fill();
-
-      ctx.fillStyle = '#e2e8f0';
-      ctx.font = '16px "Inter", sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(`${total}`, centerX, centerY);
-    }
-
-    function renderCountryVisuals(countries) {
-      const entries = Object.entries(countries).sort((a, b) => b[1] - a[1]);
-      drawPieChart('country-pie', entries);
-
-      const legend = document.getElementById('country-legend');
-      const bars = document.getElementById('country-bars');
-
-      if (!entries.length) {
-        legend.innerHTML = '<li class="muted" style="justify-content:center;">No countries recorded yet.</li>';
-        bars.innerHTML = '<div class="muted">No data yet.</div>';
-        return;
-      }
-
-      legend.innerHTML = entries.map(([country, count], index) => `
-        <li>
-          <div style="display:flex;align-items:center;gap:8px;">
-            <span class="legend-color" style="background:${colorPalette[index % colorPalette.length]}"></span>
-            <span>${country}</span>
-          </div>
-          <span class="muted">${count} participant${count === 1 ? '' : 's'}</span>
-        </li>
+        </div>
       `).join('');
-
-      renderBars(countries, 'country-bars', { unitSingular: 'participant', unitPlural: 'participants' });
     }
 
-    function renderInterestTable(stats) {
-      const body = document.getElementById('interest-table');
-      const entries = Object.entries(stats.interests).sort((a, b) => b[1] - a[1]);
+    function renderBars(values, targetId) {
+      const max = Math.max(...Object.values(values), 1);
+      const entries = Object.entries(values).sort((a, b) => b[1] - a[1]);
+      document.getElementById(targetId).innerHTML = entries.map(([key, value]) => `
+        <div class="bar">
+          <div style="display:flex;justify-content:space-between;align-items:center;font-size:14px">
+            <span>${key}</span>
+            <span class="muted">${value} match${value === 1 ? '' : 'es'}</span>
+          </div>
+          <div class="bar-track">
+            <div class="bar-fill" style="width:${(value / max) * 100}%"></div>
+          </div>
+        </div>
+      `).join('');
+    }
 
-      if (!entries.length) {
-        body.innerHTML = '<tr><td colspan="3" class="muted">No shared interests yet.</td></tr>';
-        return;
-      }
-
+    function renderInterestTable() {
+      const { interests } = computeStats();
       const participantsByInterest = {};
       dataset.matches.forEach(match => {
-        (match.sharedInterests || []).forEach(interest => {
-          if (!participantsByInterest[interest]) {
-            participantsByInterest[interest] = new Set();
-          }
+        match.mutual.forEach(interest => {
+          participantsByInterest[interest] = participantsByInterest[interest] || new Set();
           match.pair.forEach(name => participantsByInterest[interest].add(name));
         });
       });
 
-      body.innerHTML = entries.map(([interest, matches]) => {
-        const participants = participantsByInterest[interest] ? participantsByInterest[interest].size : 0;
-        return `
-          <tr>
-            <td>${interest}</td>
-            <td>${matches}</td>
-            <td>${participants}</td>
-          </tr>
-        `;
-      }).join('');
-    }
-
-    function drawLineChart(canvasId, series) {
-      const canvas = document.getElementById(canvasId);
-      const ctx = canvas.getContext('2d');
-      const dpr = window.devicePixelRatio || 1;
-      const width = canvas.clientWidth || canvas.width;
-      const height = canvas.clientHeight || canvas.height;
-      canvas.width = width * dpr;
-      canvas.height = height * dpr;
-      ctx.scale(dpr, dpr);
-      ctx.clearRect(0, 0, width, height);
-
-      if (!series.length) {
-        return;
-      }
-
-      const padding = 36;
-      const chartWidth = width - padding * 2;
-      const chartHeight = height - padding * 2;
-      const maxValue = Math.max(...series.map(point => point.value), 1);
-
-      ctx.strokeStyle = 'rgba(148, 163, 184, 0.25)';
-      ctx.lineWidth = 1;
-      ctx.setLineDash([4, 4]);
-      const horizontalSteps = 4;
-      for (let i = 0; i <= horizontalSteps; i++) {
-        const y = padding + (chartHeight / horizontalSteps) * i;
-        ctx.beginPath();
-        ctx.moveTo(padding, y);
-        ctx.lineTo(width - padding, y);
-        ctx.stroke();
-      }
-      ctx.setLineDash([]);
-
-      const points = series.map((point, index) => {
-        const x = padding + (series.length > 1 ? (chartWidth / (series.length - 1)) * index : chartWidth / 2);
-        const y = padding + chartHeight - (point.value / maxValue) * chartHeight;
-        return { x, y };
-      });
-
-      ctx.beginPath();
-      ctx.moveTo(points[0].x, padding + chartHeight);
-      points.forEach(point => ctx.lineTo(point.x, point.y));
-      ctx.lineTo(points[points.length - 1].x, padding + chartHeight);
-      ctx.closePath();
-      ctx.fillStyle = 'rgba(56, 189, 248, 0.18)';
-      ctx.fill();
-
-      ctx.beginPath();
-      ctx.moveTo(points[0].x, points[0].y);
-      for (let i = 1; i < points.length; i++) {
-        ctx.lineTo(points[i].x, points[i].y);
-      }
-      ctx.strokeStyle = '#38bdf8';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-
-      points.forEach(point => {
-        ctx.beginPath();
-        ctx.arc(point.x, point.y, 4, 0, Math.PI * 2);
-        ctx.fillStyle = '#0ea5e9';
-        ctx.fill();
-        ctx.strokeStyle = '#bae6fd';
-        ctx.stroke();
-      });
-    }
-
-    function renderMatchTrend(timeline) {
-      const labels = document.getElementById('match-trend-labels');
-      const entries = Object.entries(timeline).sort((a, b) => new Date(a[0]) - new Date(b[0]));
-
-      if (!entries.length) {
-        drawLineChart('match-trend', []);
-        labels.innerHTML = '<span class="muted">No match activity yet.</span>';
-        return;
-      }
-
-      let runningTotal = 0;
-      const series = entries.map(([day, count]) => {
-        runningTotal += count;
-        return {
-          label: new Date(day).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
-          value: runningTotal
-        };
-      });
-
-      drawLineChart('match-trend', series);
-      labels.innerHTML = series.map(point => `<span><strong>${point.value}</strong> ${point.label}</span>`).join('');
-    }
-
-    function renderAllMatchesTable() {
-      const body = document.getElementById('all-matches-body');
-
-      if (!dataset.matches.length) {
-        body.innerHTML = '<tr><td colspan="5"><div class="muted">No matches found.</div></td></tr>';
-        return;
-      }
-
-      const rows = dataset.matches
-        .slice()
-        .sort((a, b) => new Date(b.created) - new Date(a.created))
-        .map(match => {
-          const [firstName, secondName] = match.pair;
-          const participantA = participantsByName[firstName];
-          const participantB = participantsByName[secondName];
+      const body = document.getElementById('interest-table');
+      body.innerHTML = Object.entries(interests)
+        .sort((a, b) => b[1] - a[1])
+        .map(([interest, matches]) => {
+          const participants = participantsByInterest[interest] ? participantsByInterest[interest].size : 0;
           return `
             <tr>
-              <td>
-                <div class="match-id">${match.id}</div>
-                <div class="muted">${new Date(match.created).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}</div>
-              </td>
-              <td>${renderPersonCell(participantA)}</td>
-              <td>${renderPersonCell(participantB)}</td>
-              <td><div class="chip-row">${toChips(match.sharedInterests)}</div></td>
-              <td><div class="chip-row">${toChips(match.sharedHobbies)}</div></td>
+              <td>${interest}</td>
+              <td>${matches}</td>
+              <td>${participants}</td>
             </tr>
           `;
         }).join('');
-
-      body.innerHTML = rows;
     }
 
     function renderAll() {
       const stats = computeStats();
-      renderStats(stats);
+      renderStats();
       renderPairs();
-      renderBars(stats.interests, 'interest-bars', { unitSingular: 'match', unitPlural: 'matches' });
-      renderCountryVisuals(stats.countries);
-      renderInterestTable(stats);
-      renderMatchTrend(stats.timeline);
-      renderAllMatchesTable();
+      renderBars(stats.interests, 'interest-bars');
+      renderBars(stats.counties, 'county-bars');
+      renderInterestTable();
     }
 
     function unlockDashboard() {
