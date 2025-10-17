@@ -563,13 +563,17 @@ function buildMatchEntry(raw, fallbackTs){
   return { ts, partner: normalizePartner(partnerSource) };
 }
 
-function mergeMatchHistories(existing, incoming){
-  const combined = [
-    ...(Array.isArray(existing) ? existing : []),
-    ...(Array.isArray(incoming) ? incoming : [])
-  ]
+function normalizeMatchList(list){
+  return (Array.isArray(list) ? list : [])
     .map(entry => buildMatchEntry(entry, entry && entry.ts))
     .filter(Boolean);
+}
+
+function mergeMatchHistories(existing, incoming){
+  const combined = normalizeMatchList([
+    ...(Array.isArray(existing) ? existing : []),
+    ...(Array.isArray(incoming) ? incoming : [])
+  ]);
   const deduped = new Map();
   combined.forEach(entry => {
     const partner = entry.partner || {};
@@ -597,9 +601,17 @@ function extractMatchesFromResponse(res){
   return [];
 }
 
-function applyServerMatches(rawMatches){
+function applyServerMatches(rawMatches, options){
   if(!joinCode) return;
-  const merged = mergeMatchHistories(getMatchHistory(), Array.isArray(rawMatches) ? rawMatches : []);
+  const incoming = normalizeMatchList(rawMatches);
+  const shouldReplace = options && options.replace;
+  if(shouldReplace){
+    const canonical = mergeMatchHistories([], incoming);
+    saveMatchHistory(canonical);
+    refreshMatchUI(canonical);
+    return;
+  }
+  const merged = mergeMatchHistories(getMatchHistory(), incoming);
   saveMatchHistory(merged);
   refreshMatchUI(merged);
 }
@@ -631,7 +643,7 @@ async function syncMatchesFromServer(){
     myProfile = res.profile;
   }
   const matches = extractMatchesFromResponse(res);
-  applyServerMatches(matches);
+  applyServerMatches(matches, { replace:true });
 }
 
 async function manualMatchRefresh(){
@@ -980,7 +992,7 @@ async function saveProfile(){
   updateSessionUI();
   const matches = extractMatchesFromResponse(res);
   if(matches.length){
-    applyServerMatches(matches);
+    applyServerMatches(matches, { replace:true });
   }else{
     refreshMatchUI([]);
   }
@@ -999,7 +1011,7 @@ async function restore(){
   updateSessionUI();
   const matches = extractMatchesFromResponse(res);
   if(matches.length){
-    applyServerMatches(matches);
+    applyServerMatches(matches, { replace:true });
   }else{
     refreshMatchUI();
   }
@@ -1032,7 +1044,7 @@ document.getElementById('btn-restore-do').onclick = restore;
       myProfile = res.profile;
       const matches = extractMatchesFromResponse(res);
       if(matches.length){
-        applyServerMatches(matches);
+        applyServerMatches(matches, { replace:true });
       }else{
         refreshMatchUI();
       }
