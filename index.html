@@ -5,52 +5,254 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Yoobee Connect</title>
   <style>
-    :root{--bg:#0f172a;--card:#111827;--sub:#94a3b8;--text:#f8fafc;--acc:#22d3ee}
-    *{box-sizing:border-box}
-    body{margin:0;background:linear-gradient(180deg,#0b1222,#0f172a 40%,#0b1222);color:var(--text);font:16px/1.4 system-ui,Segoe UI,Roboto,Helvetica,Arial}
-    .wrap{max-width:900px;margin:40px auto;padding:20px}
-    h1,h2{margin:0 0 10px}
-    h1{font-size:28px}
-    h2{font-size:20px;color:var(--sub)}
-    .card{background:rgba(17,24,39,.8);border:1px solid rgba(255,255,255,.07);border-radius:18px;padding:22px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
-    .grid{display:grid;grid-template-columns:1fr;gap:18px}
-    @media(min-width:900px){.grid{grid-template-columns:1.2fr .8fr}}
-    label{display:block;font-size:13px;color:var(--sub);margin-bottom:6px}
-    input,textarea,select{width:100%;background:#0b1326;border:1px solid rgba(255,255,255,.08);color:var(--text);padding:12px 14px;border-radius:12px;outline:none}
-    textarea{min-height:84px}
-    .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-    .btn{cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid rgba(255,255,255,.12);background:#0b1326;color:var(--text);padding:11px 14px;border-radius:12px}
-    .btn.acc{background:var(--acc);color:#001317;border-color:transparent}
-    .btn.ghost{background:transparent}
-    .btn:disabled{opacity:.6;cursor:not-allowed}
-    .center{display:flex;align-items:center;justify-content:center}
-    .stack{display:flex;flex-direction:column;gap:12px}
-    .pill{display:inline-flex;gap:8px;flex-wrap:wrap}
-    .tag{font-size:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);padding:6px 10px;border-radius:999px}
-    .muted{color:var(--sub)}
-    .spacer{height:8px}
-    hr{border:none;height:1px;background:rgba(255,255,255,.08);margin:12px 0}
-    #status{font-size:13px;color:var(--sub)}
-    .swipe-card{border:1px dashed rgba(255,255,255,.15);border-radius:16px;padding:16px}
-    .who{font-size:18px}
-    .actions{display:flex;gap:12px;justify-content:space-between;flex-wrap:wrap}
-    .col{display:flex;flex-direction:column;gap:14px}
-    .matches .item{padding:12px;border:1px solid rgba(255,255,255,.08);border-radius:12px;margin-bottom:10px;background:rgba(255,255,255,.03)}
-    .small{font-size:12px}
-    .right{float:right}
-    .hidden{display:none !important}
-  
-/* --- Mobile enhancements (injected) --- */
-@media (max-width: 600px){
-  .wrap{margin:20px auto;padding:14px}
-  h1{font-size:24px}
-  .grid, .row{display:grid;grid-template-columns:1fr;gap:12px}
-  .actions{display:flex;gap:10px}
-  .btn{padding:12px 10px}
-  .actions .btn{flex:1}
-  .card, .swipe-card{padding:16px;border-radius:16px}
-}
+    :root {
+      --bg: #f5f5f7;
+      --surface: #ffffff;
+      --surface-soft: rgba(0, 0, 0, 0.03);
+      --border: rgba(0, 0, 0, 0.08);
+      --border-strong: rgba(0, 0, 0, 0.12);
+      --text: #1d1d1f;
+      --sub: #6e6e73;
+      --accent: #0a84ff;
+      --accent-soft: rgba(10, 132, 255, 0.12);
+      --radius-lg: 22px;
+      --shadow-lg: 0 20px 50px rgba(15, 23, 42, 0.08), 0 10px 30px rgba(15, 23, 42, 0.05);
+      --shadow-soft: 0 12px 26px rgba(15, 23, 42, 0.06);
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      background: radial-gradient(circle at top right, rgba(10, 132, 255, 0.08), transparent 55%),
+                  radial-gradient(circle at bottom left, rgba(52, 199, 89, 0.06), transparent 60%),
+                  var(--bg);
+      color: var(--text);
+      font: 16px/1.5 "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      min-height: 100vh;
+    }
+    .wrap {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 48px 24px 72px;
+      display: grid;
+      gap: 28px;
+    }
+    h1,
+    h2 {
+      margin: 0;
+    }
+    h1 {
+      font-size: clamp(26px, 3vw, 32px);
+      font-weight: 700;
+      letter-spacing: -0.4px;
+    }
+    h2 {
+      font-size: 18px;
+      color: var(--sub);
+      font-weight: 500;
+    }
+    .grid {
+      display: grid;
+      gap: 28px;
+    }
+    @media (min-width: 960px) {
+      .grid {
+        grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+        align-items: start;
+      }
+    }
+    .card {
+      background: var(--surface);
+      border-radius: var(--radius-lg);
+      padding: 28px;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-lg);
+      backdrop-filter: blur(6px);
+    }
+    label {
+      display: block;
+      font-size: 13px;
+      color: var(--sub);
+      margin-bottom: 6px;
+      font-weight: 500;
+      letter-spacing: 0.2px;
+    }
+    input,
+    textarea,
+    select {
+      width: 100%;
+      background: var(--surface-soft);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 12px 14px;
+      border-radius: 14px;
+      outline: none;
+      font: inherit;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+    }
+    input:focus,
+    textarea:focus,
+    select:focus {
+      border-color: var(--accent);
+      background: #ffffff;
+      box-shadow: 0 0 0 4px var(--accent-soft);
+    }
+    textarea {
+      min-height: 96px;
+      resize: vertical;
+    }
+    .row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+    }
+    .btn {
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border-radius: 14px;
+      border: 1px solid transparent;
+      padding: 12px 16px;
+      font-weight: 600;
+      transition: transform 0.16s ease, box-shadow 0.2s ease, background 0.2s ease;
+      font: inherit;
+    }
+    .btn.acc {
+      background: linear-gradient(135deg, #0a84ff, #1b95ff);
+      color: #ffffff;
+      box-shadow: var(--shadow-soft);
+    }
+    .btn.acc:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 18px 32px rgba(10, 132, 255, 0.25);
+    }
+    .btn.ghost {
+      background: var(--surface-soft);
+      border-color: var(--border);
+      color: var(--text);
+    }
+    .btn.ghost:hover {
+      background: rgba(0, 0, 0, 0.06);
+    }
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      box-shadow: none;
+      transform: none;
+    }
+    .center {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+    .stack {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .pill {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .tag {
+      font-size: 13px;
+      background: var(--accent-soft);
+      border: 1px solid rgba(10, 132, 255, 0.24);
+      padding: 6px 12px;
+      border-radius: 999px;
+      color: var(--accent);
+      font-weight: 500;
+    }
+    .muted {
+      color: var(--sub);
+    }
+    .spacer {
+      height: 6px;
+    }
+    hr {
+      border: none;
+      height: 1px;
+      background: rgba(0, 0, 0, 0.08);
+      margin: 18px 0;
+    }
+    #status {
+      font-size: 13px;
+      color: var(--sub);
+    }
+    .swipe-card {
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 22px;
+      background: linear-gradient(135deg, rgba(10, 132, 255, 0.05), rgba(52, 199, 89, 0.05));
+    }
+    .who {
+      font-size: 20px;
+      font-weight: 600;
+      letter-spacing: -0.2px;
+    }
+    .actions {
+      display: flex;
+      gap: 12px;
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
+    .actions .btn {
+      flex: 1 1 140px;
+      min-width: 120px;
+    }
+    .col {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+    .matches {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .matches .item {
+      padding: 14px 16px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: var(--surface);
+      box-shadow: 0 8px 18px rgba(15, 23, 42, 0.04);
+    }
+    .small {
+      font-size: 12px;
+    }
+    .right {
+      float: right;
+    }
+    .hidden {
+      display: none !important;
+    }
 
+    @media (max-width: 720px) {
+      body {
+        background: var(--bg);
+      }
+      .wrap {
+        padding: 32px 18px 56px;
+      }
+      .card {
+        padding: 24px;
+        border-radius: 18px;
+      }
+      .actions {
+        gap: 10px;
+      }
+      .actions .btn {
+        flex: 1 1 100px;
+      }
+      .row {
+        grid-template-columns: 1fr;
+      }
+    }
   </style>
 </head>
 <body>
@@ -64,11 +266,11 @@
         <div class="row">
           <div>
             <label>Name</label>
-            <input id="name" placeholder="e.g., Kauri H. (A7)" />
+            <input id="name" placeholder="e.g., Kauri H. (A7)" required />
           </div>
           <div>
             <label>Campus</label>
-            <select id="campus">
+            <select id="campus" required>
               <option value="">Select campus…</option>
               <option>Auckland1</option>
               <option>Auckland2</option>
@@ -80,20 +282,24 @@
         <div class="row">
           <div>
             <label>Country</label>
-            <select id="country"><option value="">Select country…</option></select>
+            <select id="country" required><option value="">Select country…</option></select>
           </div>
           <div>
             <label>Background</label>
-            <input id="background" placeholder="e.g., Computer Science" />
+            <input id="background" placeholder="e.g., Computer Science" required />
           </div>
         </div>
         <div>
           <label>Interests (comma separated)</label>
-          <textarea id="interests" placeholder="e.g., AI, Robotics, Cloud"></textarea>
+          <textarea id="interests" placeholder="e.g., AI, Robotics, Cloud" required></textarea>
         </div>
         <div>
-          <label>Teams / Contact (optional)</label>
-          <input id="teams" placeholder="yourname@yoobee.ac.nz" />
+          <label>Hobbies (comma separated)</label>
+          <textarea id="hobbies" placeholder="e.g., Trail running, Indie films" required></textarea>
+        </div>
+        <div>
+          <label>Contact email</label>
+          <input id="contact" type="email" placeholder="yourname@yoobee.ac.nz" autocomplete="email" required />
         </div>
         <div class="row">
           <button class="btn acc" id="btn-register">Save & Start</button>
@@ -167,6 +373,7 @@ const el = id => document.getElementById(id);
 const show = id => el(id).classList.remove('hidden');
 const hide = id => el(id).classList.add('hidden');
 const normalizeCode = code => (code || '').toString().trim().toUpperCase();
+const isValidEmail = email => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 const COUNTRY_LIST = [
   'Afghanistan','Albania','Algeria','Andorra','Angola','Antigua and Barbuda','Argentina','Armenia','Australia','Austria',
   'Azerbaijan','Bahamas','Bahrain','Bangladesh','Barbados','Belarus','Belgium','Belize','Benin','Bhutan','Bolivia',
@@ -210,16 +417,33 @@ function populateCountrySelect(selected=''){
 }
 function populateProfileFormFromState(){
   const profile = meProfile || {};
-  el('name').value = profile.name || '';
-  el('campus').value = profile.campus || '';
+  const nameField = el('name');
+  if(nameField){ nameField.value = profile.name || ''; }
+  const campusField = el('campus');
+  if(campusField){ campusField.value = profile.campus || ''; }
   populateCountrySelect(profile.country || '');
-  el('background').value = profile.background || '';
-  if(Array.isArray(profile.interests)){
-    el('interests').value = profile.interests.join(', ');
-  }else{
-    el('interests').value = profile.interests || '';
+  const backgroundField = el('background');
+  if(backgroundField){ backgroundField.value = profile.background || ''; }
+  const interestsField = el('interests');
+  if(interestsField){
+    if(Array.isArray(profile.interests)){
+      interestsField.value = profile.interests.join(', ');
+    }else{
+      interestsField.value = profile.interests || '';
+    }
   }
-  el('teams').value = profile.teams || '';
+  const hobbiesField = el('hobbies');
+  if(hobbiesField){
+    if(Array.isArray(profile.hobbies)){
+      hobbiesField.value = profile.hobbies.join(', ');
+    }else{
+      hobbiesField.value = profile.hobbies || '';
+    }
+  }
+  const contactField = el('contact');
+  if(contactField){
+    contactField.value = profile.teams || profile.contact || '';
+  }
 }
 
 /* ==========================
@@ -296,14 +520,23 @@ async function saveProfile(){
   const country = el('country').value.trim();
   const background = el('background').value.trim();
   const interests = el('interests').value.trim();
-  const teams = el('teams').value.trim();
-  if(!name || !campus || !country || !background){
-    setStatus('Please fill Name, Campus, Country, and Background.'); return;
+  const hobbies = el('hobbies').value.trim();
+  const contactEmail = el('contact').value.trim();
+  if(!name || !campus || !background){
+    setStatus('Please fill Name, Campus, and Background.'); return;
   }
+  if(!country || !interests || !hobbies || !contactEmail){
+    setStatus('Country, interests, hobbies, and email are required.'); return;
+  }
+  if(!isValidEmail(contactEmail)){
+    setStatus('Please enter a valid email address.'); return;
+  }
+  const interestList = interests.split(',').map(s => s.trim()).filter(Boolean);
+  const hobbyList = hobbies.split(',').map(s => s.trim()).filter(Boolean);
   setStatus('Saving…');
   let res;
   try{
-    res = await apiPost({ action:'register', name, campus, country, background, interests, teams });
+    res = await apiPost({ action:'register', name, campus, country, background, interests, hobbies, teams: contactEmail });
   }catch(e){
     setStatus('Save failed: ' + e.message);
     return;
@@ -314,6 +547,9 @@ async function saveProfile(){
   meProfile = res.profile||{};
   if(meProfile){
     meProfile.country = meProfile.country || country;
+    meProfile.interests = Array.isArray(meProfile.interests) && meProfile.interests.length ? meProfile.interests : interestList;
+    meProfile.hobbies = Array.isArray(meProfile.hobbies) && meProfile.hobbies.length ? meProfile.hobbies : hobbyList;
+    meProfile.teams = meProfile.teams || contactEmail;
   }
   saveSession();
   populateProfileFormFromState();
@@ -468,14 +704,14 @@ function renderMatches(){
     const p = m.partner || {};
     const when = m.ts ? new Date(m.ts).toLocaleString() : '';
     const tags = (p.interests||[]).map(t=>`<span class="tag">${escapeHtml(t)}</span>`).join('');
-    const teams = p.teams ? `<div class="small">Teams: <b>${escapeHtml(p.teams)}</b></div>` : '';
+    const contactLine = p.teams ? `<div class="small">Email: <b>${escapeHtml(p.teams)}</b></div>` : '';
     const codeSpan = p.code ? `<div class="small muted">Code: ${escapeHtml(p.code)}</div>` : '';
     box.insertAdjacentHTML('beforeend', `
       <div class="item">
         <div><b>${escapeHtml(p.name||'Unknown')}</b></div>
         <div class="small muted">${escapeHtml(p.campus||'—')} • ${escapeHtml(p.country||'—')} • ${escapeHtml(p.background||'—')}</div>
         <div class="pill" style="margin-top:6px">${tags||'<span class="small muted">No interests</span>'}</div>
-        ${teams}
+        ${contactLine}
         ${codeSpan}
         <div class="small muted" style="margin-top:6px">Matched: ${escapeHtml(when)}</div>
       </div>
@@ -497,6 +733,11 @@ function recordMatch(partner){
       country: partner.country || '',
       background: partner.background || '',
       interests: Array.isArray(partner.interests) ? partner.interests.slice() : [],
+      hobbies: Array.isArray(partner.hobbies)
+        ? partner.hobbies.slice()
+        : (typeof partner.hobbies === 'string' && partner.hobbies.trim()
+            ? partner.hobbies.split(/[,;|]/).map(h => h.trim()).filter(Boolean)
+            : []),
       teams: partner.teams || ''
     }
   };
