@@ -515,10 +515,6 @@ let draftPhoto = null;   // base64 data URL awaiting upload
 let studentCountries = new Map(); // Map<code,country>
 let countryMapChart = null;
 let worldMapLoading = false;
-const WORLD_MAP_URLS = [
-  'https://cdn.jsdelivr.net/npm/echarts@5.5.0/examples/data/asset/geo/world.json',
-  'https://echarts.apache.org/examples/data/asset/geo/world.json'
-];
 
 // polling
 let matchPollTimer = null;
@@ -686,22 +682,13 @@ function ensureWorldMapData(){
   if(typeof echarts === 'undefined' || typeof echarts.getMap !== 'function') return false;
   if(echarts.getMap('world')) return true;
   if(worldMapLoading) return false;
+  const WORLD_MAP_URL = 'https://fastly.jsdelivr.net/npm/echarts@5.5.0/examples/data/asset/geo/world.json';
   worldMapLoading = true;
-  const queue = [...WORLD_MAP_URLS];
-  const fetchNext = () => {
-    if(queue.length === 0) throw new Error('Failed to load world map from all sources');
-    const url = queue.shift();
-    return fetch(url)
-      .then(response => {
-        if(!response.ok) throw new Error(`HTTP ${response.status}`);
-        return response.json();
-      })
-      .catch(error => {
-        console.warn(`World map fetch failed from ${url}`, error);
-        return fetchNext();
-      });
-  };
-  fetchNext()
+  fetch(WORLD_MAP_URL)
+    .then(response => {
+      if(!response.ok) throw new Error(`Failed to load world map: ${response.status}`);
+      return response.json();
+    })
     .then(geoJson => {
       if(geoJson){
         echarts.registerMap('world', geoJson);
