@@ -513,7 +513,6 @@ let current = null;
 let draftPhoto = null;   // base64 data URL awaiting upload
 let studentCountries = new Map(); // Map<code,country>
 let countryMapChart = null;
-let worldMapLoader = null;
 
 // polling
 let matchPollTimer = null;
@@ -677,44 +676,9 @@ function ensureCountryMap(){
   countryMapChart = echarts.init(node);
   return countryMapChart;
 }
-function ensureWorldMapData(){
-  if(typeof echarts === 'undefined' || typeof echarts.getMap !== 'function'){ return Promise.resolve(false); }
-  if(echarts.getMap('world')) return Promise.resolve(true);
-  if(worldMapLoader) return worldMapLoader;
-  if(typeof fetch !== 'function'){
-    console.warn('Fetch API unavailable; cannot load world map data.');
-    return Promise.resolve(false);
-  }
-  const WORLD_MAP_URL = 'https://fastly.jsdelivr.net/npm/echarts@5.5.0/examples/data/asset/world.json';
-  worldMapLoader = fetch(WORLD_MAP_URL)
-    .then(resp => {
-      if(!resp.ok){
-        throw new Error(`World map request failed: ${resp.status}`);
-      }
-      return resp.json();
-    })
-    .then(geojson => {
-      if(geojson){
-        echarts.registerMap('world', geojson);
-        return true;
-      }
-      return false;
-    })
-    .catch(err => {
-      console.error('Failed to load world map data', err);
-      worldMapLoader = null;
-      return false;
-    });
-  return worldMapLoader;
-}
-
-async function renderCountryMap(){
+function renderCountryMap(){
   const chart = ensureCountryMap();
   if(!chart) return;
-  const mapReady = await ensureWorldMapData();
-  if(!mapReady){
-    return;
-  }
   const counts = getCountryCounts();
   const data = Array.from(counts.entries()).map(([name, value]) => ({ name, value }));
   const maxValue = data.reduce((max, item) => Math.max(max, item.value), 0);
@@ -774,7 +738,7 @@ function updateCountrySummary(){
 }
 function updateCountryInsights(){
   updateCountrySummary();
-  renderCountryMap().catch(err => console.error('Failed to render country map', err));
+  renderCountryMap();
   refreshCountryMapSize();
 }
 function refreshCountryMapSize(){
@@ -783,7 +747,6 @@ function refreshCountryMapSize(){
   }
 }
 function onSwipeScreenVisible(){
-  ensureWorldMapData().catch(err => console.error('Failed to prepare world map data', err));
   requestAnimationFrame(() => refreshCountryMapSize());
   setTimeout(refreshCountryMapSize, 180);
 }
