@@ -575,7 +575,7 @@ let worldMapLoading = false;
 
 // polling
 let matchPollTimer = null;
-const MATCH_POLL_MS = 15000;
+const MATCH_POLL_MS = 20000;
 
 const PHOTO_MAX_DIM = 512;
 const PHOTO_MAX_BYTES = 150 * 1024;
@@ -603,6 +603,70 @@ const normalizeCandidate = cand => {
   return normalized;
 };
 const isValidEmail = email => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+const buttonBusyCounts = new Map();
+const activeUiTasks = new Map();
+
+function toButtonList(buttons){
+  if(!buttons) return [];
+  if(Array.isArray(buttons)) return buttons.filter(Boolean);
+  return [buttons];
+}
+
+function updateButtonState(id){
+  const btn = el(id);
+  if(!btn) return;
+  const count = buttonBusyCounts.get(id) || 0;
+  if(count > 0){
+    btn.disabled = true;
+    btn.dataset.busy = '1';
+  }else{
+    btn.disabled = false;
+    delete btn.dataset.busy;
+  }
+}
+
+function pushButtonBusy(ids){
+  ids.forEach(id => {
+    const next = (buttonBusyCounts.get(id) || 0) + 1;
+    buttonBusyCounts.set(id, next);
+    updateButtonState(id);
+  });
+}
+
+function popButtonBusy(ids){
+  ids.forEach(id => {
+    const count = buttonBusyCounts.get(id) || 0;
+    if(count <= 1){
+      buttonBusyCounts.delete(id);
+    }else{
+      buttonBusyCounts.set(id, count - 1);
+    }
+    updateButtonState(id);
+  });
+}
+
+function runUiTask(key, buttons, task){
+  const ids = toButtonList(buttons);
+  if(key && activeUiTasks.has(key)){
+    return activeUiTasks.get(key);
+  }
+  pushButtonBusy(ids);
+  const promise = (async () => {
+    try{
+      return await task();
+    }finally{
+      popButtonBusy(ids);
+      if(key){
+        activeUiTasks.delete(key);
+      }
+    }
+  })();
+  if(key){
+    activeUiTasks.set(key, promise);
+  }
+  return promise;
+}
 const COUNTRY_LIST = [
   'Afghanistan', 'Albania', 'Algeria', 'Andorra', 'Angola', 'Antigua and Barbuda', 'Argentina', 'Armenia', 'Australia', 'Austria',
   'Azerbaijan', 'Bahamas', 'Bahrain', 'Bangladesh', 'Barbados', 'Belarus', 'Belgium', 'Belize', 'Benin', 'Bhutan', 'Bolivia',
@@ -1536,43 +1600,45 @@ function logout(){
    CANDIDATES & SWIPES
 ========================== */
 async function fetchCandidates(){
-  const code = normalizeCode(joinCode);
-  if(!code) return;
-  setStatus('Loading candidates…','status2');
-  let res;
-  try{
-    res = await apiGet({ action:'candidates', code });
-  }catch(e){
-    setStatus('Candidates failed: ' + e.message, 'status2');
-    return;
-  }
-  if(!res.ok){ setStatus('Error: ' + res.error, 'status2'); return; }
-  const myCode = normalizeCode(joinCode);
-  const seen = new Set(deck.map(d=> normalizeCode(d.code)));
-  const incoming = Array.isArray(res.candidates) ? res.candidates : [];
-  const normalizedIncoming = incoming
-    .map(normalizeCandidate)
-    .filter(Boolean);
-  const countryChanged = registerProfilesCountries(normalizedIncoming);
-  const backgroundChanged = registerProfilesBackgrounds(normalizedIncoming);
-  normalizedIncoming.forEach(c=>{
-    const code = normalizeCode(c.code);
-    if(!code || code === myCode || seen.has(code) || swiped.has(code)) return;
-    const interests = Array.isArray(c.interests)
-      ? c.interests.slice()
-      : (typeof c.interests === 'string' && c.interests.trim()
-          ? c.interests.split(/[,;|]/).map(t => t.trim()).filter(Boolean)
-          : []);
-    seen.add(code);
-    deck.push({ ...c, code, interests, gender: c.gender || '' });
+  return runUiTask('fetchCandidates', [], async () => {
+    const code = normalizeCode(joinCode);
+    if(!code) return;
+    setStatus('Loading candidates…','status2');
+    let res;
+    try{
+      res = await apiGet({ action:'candidates', code });
+    }catch(e){
+      setStatus('Candidates failed: ' + e.message, 'status2');
+      return;
+    }
+    if(!res.ok){ setStatus('Error: ' + res.error, 'status2'); return; }
+    const myCode = normalizeCode(joinCode);
+    const seen = new Set(deck.map(d=> normalizeCode(d.code)));
+    const incoming = Array.isArray(res.candidates) ? res.candidates : [];
+    const normalizedIncoming = incoming
+      .map(normalizeCandidate)
+      .filter(Boolean);
+    const countryChanged = registerProfilesCountries(normalizedIncoming);
+    const backgroundChanged = registerProfilesBackgrounds(normalizedIncoming);
+    normalizedIncoming.forEach(c=>{
+      const code = normalizeCode(c.code);
+      if(!code || code === myCode || seen.has(code) || swiped.has(code)) return;
+      const interests = Array.isArray(c.interests)
+        ? c.interests.slice()
+        : (typeof c.interests === 'string' && c.interests.trim()
+            ? c.interests.split(/[,;|]/).map(t => t.trim()).filter(Boolean)
+            : []);
+      seen.add(code);
+      deck.push({ ...c, code, interests, gender: c.gender || '' });
+    });
+    if(countryChanged){
+      updateCountryInsights();
+    }
+    if(backgroundChanged){
+      updateBackgroundInsights();
+    }
+    setStatus('', 'status2');
   });
-  if(countryChanged){
-    updateCountryInsights();
-  }
-  if(backgroundChanged){
-    updateBackgroundInsights();
-  }
-  setStatus('', 'status2');
 }
 
 async function onSwipe(dir){
@@ -1806,13 +1872,15 @@ function applyServerMatches(serverMatches){
   }
 }
 
-async function syncMatchesFromServer(){
-  const code = normalizeCode(joinCode);
-  if(!code) return;
-  const res = await apiGet({ action:'matches', code });
-  if(!res.ok) return;
-  applyServerMatches(res.matches||[]);
-  el('last-sync').textContent = 'Last sync: ' + new Date().toLocaleTimeString();
+async function syncMatchesFromServer(buttons){
+  return runUiTask('syncMatches', buttons, async () => {
+    const code = normalizeCode(joinCode);
+    if(!code) return;
+    const res = await apiGet({ action:'matches', code });
+    if(!res.ok) return;
+    applyServerMatches(res.matches||[]);
+    el('last-sync').textContent = 'Last sync: ' + new Date().toLocaleTimeString();
+  });
 }
 
 /* ==========================
@@ -1824,12 +1892,12 @@ function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, m => ({'&':'&am
    WIRE UP
 ========================== */
 window.addEventListener('resize', refreshCountryMapSize);
-el('btn-register').addEventListener('click', saveProfile);
-el('btn-restore').addEventListener('click', restore);
+el('btn-register').addEventListener('click', () => runUiTask('register', ['btn-register','btn-restore'], () => saveProfile()));
+el('btn-restore').addEventListener('click', () => runUiTask('restore', ['btn-register','btn-restore'], () => restore()));
 el('btn-logout').addEventListener('click', logout);
-el('btn-left').addEventListener('click', ()=> onSwipe('left'));
-el('btn-right').addEventListener('click', ()=> onSwipe('right'));
-el('btn-refresh').addEventListener('click', ()=> syncMatchesFromServer());
+el('btn-left').addEventListener('click', () => runUiTask('swipe', ['btn-left','btn-right'], () => onSwipe('left')));
+el('btn-right').addEventListener('click', () => runUiTask('swipe', ['btn-left','btn-right'], () => onSwipe('right')));
+el('btn-refresh').addEventListener('click', () => syncMatchesFromServer(['btn-refresh']));
 const photoInputControl = el('photo');
 if(photoInputControl){
   photoInputControl.addEventListener('change', async ()=>{
