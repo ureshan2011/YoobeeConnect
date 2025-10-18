@@ -249,6 +249,55 @@
       font-weight: 600;
       letter-spacing: -0.2px;
     }
+    .background-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .background-item {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .background-item-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .background-bar-track {
+      height: 10px;
+      border-radius: 999px;
+      background: rgba(10, 132, 255, 0.12);
+      overflow: hidden;
+    }
+    .background-bar-fill {
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, rgba(10, 132, 255, 0.85), rgba(0, 122, 255, 0.85));
+    }
+    .background-variants {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--sub);
+    }
+    .background-variant {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: rgba(10, 132, 255, 0.1);
+      border: 1px solid rgba(10, 132, 255, 0.18);
+      color: var(--accent);
+      font-weight: 500;
+    }
+    .background-variants-more {
+      font-size: 12px;
+      color: var(--sub);
+    }
     #country-map {
       width: 100%;
       height: clamp(220px, 40vh, 360px);
@@ -472,6 +521,13 @@
           <div id="country-map" role="img" aria-label="World map of registered students"></div>
           <div class="small muted">Drag to pan, pinch or scroll to zoom.</div>
         </div>
+        <div class="map-panel" id="background-panel">
+          <div class="map-panel-header">
+            <h3>Student backgrounds</h3>
+            <div id="background-summary" class="small muted">No background data yet.</div>
+          </div>
+          <div id="background-list" class="background-list"></div>
+        </div>
         <div class="row">
           <button class="btn ghost" id="btn-logout">Sign out</button>
           <div id="status2" class="small muted center"></div>
@@ -513,6 +569,7 @@ let matchList = [];      // [{ts, partner:{...}}]
 let current = null;
 let draftPhoto = null;   // base64 data URL awaiting upload
 let studentCountries = new Map(); // Map<code,country>
+let studentBackgrounds = new Map(); // Map<code,background>
 let countryMapChart = null;
 let worldMapLoading = false;
 
@@ -620,6 +677,117 @@ const COUNTRY_ALIASES = {
   'palestinian territories': 'Palestine',
   'palestinian territory': 'Palestine'
 };
+const BACKGROUND_STOPWORDS = new Set(['and', 'of', 'in', 'for', 'the', 'a', 'an', 'to', 'with', 'on', 'from', 'at', 'by']);
+function backgroundKey(value){
+  if(!value) return '';
+  return String(value)
+    .toLowerCase()
+    .replace(/&/g, ' and ')
+    .replace(/[._:,;()/\\-]+/g, ' ')
+    .replace(/[^a-z0-9+\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+const BACKGROUND_ALIAS_BASE = {
+  'Information Technology': 'Information Technology',
+  'Info Tech': 'Information Technology',
+  'Information Tech': 'Information Technology',
+  'Information-Technology': 'Information Technology',
+  'InformationTechnology': 'Information Technology',
+  'IT': 'Information Technology',
+  'I.T.': 'Information Technology',
+  'I T': 'Information Technology',
+  'Computer Science': 'Information Technology',
+  'CS': 'Information Technology',
+  'ICT': 'Information Technology',
+  'Cyber Security': 'Information Technology',
+  'Cybersecurity': 'Information Technology',
+  'Artificial Intelligence': 'Information Technology',
+  'Machine Learning': 'Information Technology',
+  'Data Science': 'Information Technology',
+  'Data Analytics': 'Information Technology',
+  'Information Systems': 'Information Technology',
+  'Information System': 'Information Technology',
+  'Software Engineering': 'Information Technology',
+  'Software Engineer': 'Information Technology',
+  'Software Development': 'Information Technology',
+  'Software Developer': 'Information Technology',
+  'Software': 'Information Technology',
+  'Web Development': 'Information Technology',
+  'Web Developer': 'Information Technology',
+  'Programming': 'Information Technology',
+  'Developer': 'Information Technology',
+  'Development': 'Information Technology',
+  'Networking': 'Information Technology',
+  'Network Engineering': 'Information Technology',
+  'Graphic Design': 'Design & Creative Media',
+  'Graphics Design': 'Design & Creative Media',
+  'Design': 'Design & Creative Media',
+  'UI Design': 'Design & Creative Media',
+  'UX Design': 'Design & Creative Media',
+  'UX UI Design': 'Design & Creative Media',
+  'Product Design': 'Design & Creative Media',
+  'Visual Design': 'Design & Creative Media',
+  'Visual Communication': 'Design & Creative Media',
+  'Creative Media': 'Design & Creative Media',
+  'Digital Media': 'Design & Creative Media',
+  'Illustration': 'Design & Creative Media',
+  'Illustrator': 'Design & Creative Media',
+  'Animation': 'Animation & 3D',
+  '3D Animation': 'Animation & 3D',
+  '3D Art': 'Animation & 3D',
+  'VFX': 'Animation & 3D',
+  'Visual Effects': 'Animation & 3D',
+  'Motion Graphics': 'Animation & 3D',
+  'Game Design': 'Game Development',
+  'Game Development': 'Game Development',
+  'Game Dev': 'Game Development',
+  'Game Programming': 'Game Development',
+  'Game Artist': 'Game Development',
+  'Business': 'Business & Marketing',
+  'Business Management': 'Business & Marketing',
+  'Business Administration': 'Business & Marketing',
+  'Marketing': 'Business & Marketing',
+  'Digital Marketing': 'Business & Marketing',
+  'Advertising': 'Business & Marketing',
+  'Accounting': 'Business & Marketing',
+  'Finance': 'Business & Marketing',
+  'Entrepreneurship': 'Business & Marketing',
+  'Film': 'Film & Storytelling',
+  'Film Production': 'Film & Storytelling',
+  'Storytelling': 'Film & Storytelling',
+  'Screen Production': 'Film & Storytelling',
+  'Media Production': 'Film & Storytelling',
+  'Broadcasting': 'Film & Storytelling',
+  'Photography': 'Photography',
+  'Photographer': 'Photography',
+  'Engineering': 'Engineering',
+  'Mechanical Engineering': 'Engineering',
+  'Civil Engineering': 'Engineering',
+  'Electrical Engineering': 'Engineering',
+  'Architecture': 'Architecture',
+  'Education': 'Education',
+  'Teaching': 'Education',
+  'Teacher': 'Education'
+};
+const BACKGROUND_ALIAS_MAP = {};
+Object.entries(BACKGROUND_ALIAS_BASE).forEach(([alias, canonical]) => {
+  const key = backgroundKey(alias);
+  if(key && !BACKGROUND_ALIAS_MAP[key]){
+    BACKGROUND_ALIAS_MAP[key] = canonical;
+  }
+});
+const BACKGROUND_KEYWORD_GROUPS = [
+  { canonical: 'Information Technology', keywords: ['information technology', 'computer science', 'software', 'developer', 'development', 'programming', 'coding', 'engineer', 'web', 'systems', 'technology', 'computing', 'ict', 'cyber', 'data', 'analytics'] },
+  { canonical: 'Design & Creative Media', keywords: ['design', 'designer', 'visual', 'creative', 'ux', 'ui', 'illustration', 'illustrator', 'graphics', 'graphic'] },
+  { canonical: 'Animation & 3D', keywords: ['animation', 'animated', '3d', 'vfx', 'cg', 'cgi', 'motion'] },
+  { canonical: 'Game Development', keywords: ['game', 'gaming', 'interactive'] },
+  { canonical: 'Business & Marketing', keywords: ['business', 'marketing', 'commerce', 'management', 'entrepreneurship', 'finance', 'accounting'] },
+  { canonical: 'Film & Storytelling', keywords: ['film', 'story', 'screen', 'cinema', 'broadcast', 'production'] },
+  { canonical: 'Photography', keywords: ['photography', 'photographer', 'photo'] },
+  { canonical: 'Engineering', keywords: ['engineering', 'engineer'] },
+  { canonical: 'Education', keywords: ['education', 'teaching', 'teacher', 'tutor'] }
+];
 function normalizeCountryName(name){
   if(!name) return '';
   const trimmed = String(name).trim();
@@ -661,6 +829,183 @@ function registerProfilesCountries(list){
     }
   });
   return changed;
+}
+function tokenizeBackground(key){
+  if(!key) return [];
+  return key
+    .split(/\s+/)
+    .map(token => token.trim())
+    .filter(token => token && !BACKGROUND_STOPWORDS.has(token));
+}
+function toTitleCase(str){
+  if(!str) return '';
+  return str
+    .split(' ')
+    .map(word => {
+      if(!word) return '';
+      if(word.length <= 3 && word === word.toUpperCase()) return word;
+      if(/^[0-9]/.test(word)){
+        return word.charAt(0).toUpperCase() + word.slice(1).toUpperCase();
+      }
+      if(/^[A-Z0-9]+$/.test(word) && !/[a-z]/.test(word)){
+        return word;
+      }
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    })
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+function computeTokenSimilarity(tokens, tokenSet){
+  if(!tokens.length || !tokenSet || !tokenSet.size) return 0;
+  let intersection = 0;
+  tokens.forEach(token => {
+    if(tokenSet.has(token)) intersection += 1;
+  });
+  const union = new Set([...tokens, ...tokenSet]);
+  if(!union.size) return 0;
+  return intersection / union.size;
+}
+function matchBackgroundAlias(key, tokens){
+  if(BACKGROUND_ALIAS_MAP[key]) return BACKGROUND_ALIAS_MAP[key];
+  const collapsed = key.replace(/\s+/g, '');
+  if(BACKGROUND_ALIAS_MAP[collapsed]) return BACKGROUND_ALIAS_MAP[collapsed];
+  if(tokens.length === 1){
+    const single = tokens[0];
+    if(BACKGROUND_ALIAS_MAP[single]) return BACKGROUND_ALIAS_MAP[single];
+  }
+  return null;
+}
+function matchBackgroundKeywords(key, tokens){
+  for(const group of BACKGROUND_KEYWORD_GROUPS){
+    const { canonical, keywords } = group;
+    const matched = keywords.some(keyword => {
+      if(keyword.includes(' ')){
+        return key.includes(keyword);
+      }
+      return tokens.some(token => token === keyword || token.startsWith(keyword));
+    });
+    if(matched){
+      return canonical;
+    }
+  }
+  return null;
+}
+function matchExistingBackgroundCluster(tokens, clusters){
+  let bestScore = 0;
+  let bestCanonical = '';
+  clusters.forEach((meta, canonical) => {
+    const score = computeTokenSimilarity(tokens, meta.tokens);
+    if(score > bestScore){
+      bestScore = score;
+      bestCanonical = canonical;
+    }
+  });
+  return bestScore >= 0.6 ? bestCanonical : null;
+}
+function determineBackgroundCanonical(displayValue, key, tokens, clusters){
+  if(!key) return '';
+  const aliasMatch = matchBackgroundAlias(key, tokens);
+  if(aliasMatch) return aliasMatch;
+  const keywordMatch = matchBackgroundKeywords(key, tokens);
+  if(keywordMatch) return keywordMatch;
+  const dynamicMatch = matchExistingBackgroundCluster(tokens, clusters);
+  if(dynamicMatch) return dynamicMatch;
+  return toTitleCase(displayValue);
+}
+function registerStudentBackground(code, background){
+  const normalizedCode = normalizeCode(code);
+  if(!normalizedCode) return false;
+  const value = (background || '').toString().trim();
+  if(!value){
+    if(studentBackgrounds.has(normalizedCode)){
+      studentBackgrounds.delete(normalizedCode);
+      return true;
+    }
+    return false;
+  }
+  const existing = studentBackgrounds.get(normalizedCode);
+  if(existing === value) return false;
+  studentBackgrounds.set(normalizedCode, value);
+  return true;
+}
+function registerProfilesBackgrounds(list){
+  if(!Array.isArray(list)) return false;
+  let changed = false;
+  list.forEach(profile => {
+    if(!profile) return;
+    const code = profile.code || profile.id || '';
+    const background = profile.background || profile.major || profile.programme || profile.program || profile.study || profile.course || '';
+    if(registerStudentBackground(code, background)){
+      changed = true;
+    }
+  });
+  return changed;
+}
+function computeBackgroundClusters(){
+  const clusters = new Map();
+  let total = 0;
+  studentBackgrounds.forEach(value => {
+    const trimmed = (value || '').trim();
+    if(!trimmed) return;
+    total += 1;
+    const key = backgroundKey(trimmed);
+    if(!key) return;
+    const tokens = tokenizeBackground(key);
+    const canonical = determineBackgroundCanonical(trimmed, key, tokens, clusters);
+    if(!canonical) return;
+    const meta = clusters.get(canonical) || { count: 0, variants: new Set(), tokens: new Set() };
+    meta.count += 1;
+    meta.variants.add(toTitleCase(trimmed));
+    tokens.forEach(token => meta.tokens.add(token));
+    clusters.set(canonical, meta);
+  });
+  return { clusters, total };
+}
+function updateBackgroundInsights(){
+  const summaryNode = el('background-summary');
+  const listNode = el('background-list');
+  if(!summaryNode || !listNode) return;
+  const { clusters, total } = computeBackgroundClusters();
+  if(!total){
+    summaryNode.textContent = 'No background data yet.';
+    listNode.innerHTML = '<div class="muted small">Background insights will appear once students add them.</div>';
+    return;
+  }
+  const areaCount = clusters.size;
+  summaryNode.textContent = `${total} ${total === 1 ? 'student' : 'students'} across ${areaCount} ${areaCount === 1 ? 'background' : 'backgrounds'}.`;
+  const entries = Array.from(clusters.entries()).sort((a, b) => {
+    if(b[1].count !== a[1].count) return b[1].count - a[1].count;
+    return a[0].localeCompare(b[0]);
+  });
+  const displayEntries = entries.slice(0, 8);
+  const maxCount = displayEntries.reduce((max, [, meta]) => Math.max(max, meta.count), 0) || 1;
+  listNode.innerHTML = displayEntries.map(([canonical, meta]) => {
+    const variants = Array.from(meta.variants).filter(variant => variant.toLowerCase() !== canonical.toLowerCase());
+    const shownVariants = variants.slice(0, 3);
+    const remaining = variants.length - shownVariants.length;
+    const variantHtml = variants.length
+      ? `<div class="background-variants">Also noted as ${shownVariants.map(v => `<span class="background-variant">${escapeHtml(v)}</span>`).join(' ')}${remaining > 0 ? ` <span class="background-variants-more">+${remaining} more</span>` : ''}</div>`
+      : '';
+    const width = Math.max(8, Math.min(100, (meta.count / maxCount) * 100));
+    const studentLabel = meta.count === 1 ? 'student' : 'students';
+    return `
+      <div class="background-item">
+        <div class="background-item-header">
+          <span>${escapeHtml(canonical)}</span>
+          <span class="muted">${meta.count} ${studentLabel}</span>
+        </div>
+        <div class="background-bar-track">
+          <div class="background-bar-fill" style="width:${width}%"></div>
+        </div>
+        ${variantHtml}
+      </div>
+    `;
+  }).join('');
+  if(entries.length > displayEntries.length){
+    const hiddenCount = entries.length - displayEntries.length;
+    listNode.insertAdjacentHTML('beforeend', `<div class="small muted">+${hiddenCount} more background${hiddenCount === 1 ? '' : 's'} not shown.</div>`);
+  }
 }
 function getCountryCounts(){
   const counts = new Map();
@@ -982,17 +1327,24 @@ function loadSession(){
   applyProfilePhoto(meProfile);
   draftPhoto = '';
   studentCountries.clear();
+  studentBackgrounds.clear();
   if(joinCode && meProfile && meProfile.country){
     registerStudentCountry(joinCode, meProfile.country);
   }
+  if(joinCode && meProfile && meProfile.background){
+    registerStudentBackground(joinCode, meProfile.background);
+  }
   updateCountryInsights();
+  updateBackgroundInsights();
 }
 function clearSession(){
   localStorage.removeItem('yc_code');
   localStorage.removeItem('yc_profile');
   draftPhoto = '';
   studentCountries.clear();
+  studentBackgrounds.clear();
   updateCountryInsights();
+  updateBackgroundInsights();
 }
 
 /* ==========================
@@ -1094,12 +1446,15 @@ async function saveProfile(){
     meProfile.hobbies = Array.isArray(meProfile.hobbies) && meProfile.hobbies.length ? meProfile.hobbies : hobbyList;
     meProfile.teams = meProfile.teams || contactEmail;
     meProfile.gender = meProfile.gender || gender;
+    meProfile.background = meProfile.background || background;
     if(!meProfile.photo && photoData){
       meProfile.photo = normalizePhotoData(photoData);
     }
   }
   registerStudentCountry(joinCode, meProfile && meProfile.country ? meProfile.country : country);
+  registerStudentBackground(joinCode, meProfile && meProfile.background ? meProfile.background : background);
   updateCountryInsights();
+  updateBackgroundInsights();
   draftPhoto = '';
   saveSession();
   populateProfileFormFromState();
@@ -1137,8 +1492,16 @@ async function restore(){
   applyProfilePhoto(meProfile);
   matchList = Array.isArray(res.matches)? res.matches : [];
   registerStudentCountry(joinCode, meProfile && meProfile.country ? meProfile.country : '');
-  registerProfilesCountries((matchList||[]).map(m => m && m.partner ? { code: m.partner.code || m.partner.id || '', country: m.partner.country || m.partner.nation || '' } : null));
+  registerStudentBackground(joinCode, meProfile && meProfile.background ? meProfile.background : '');
+  const matchProfiles = (matchList||[]).map(m => m && m.partner ? {
+    code: m.partner.code || m.partner.id || '',
+    country: m.partner.country || m.partner.nation || '',
+    background: m.partner.background || m.partner.study || ''
+  } : null);
+  registerProfilesCountries(matchProfiles);
+  registerProfilesBackgrounds(matchProfiles);
   updateCountryInsights();
+  updateBackgroundInsights();
   saveSession();
   populateProfileFormFromState();
   draftPhoto = '';
@@ -1190,7 +1553,8 @@ async function fetchCandidates(){
   const normalizedIncoming = incoming
     .map(normalizeCandidate)
     .filter(Boolean);
-  const changed = registerProfilesCountries(normalizedIncoming);
+  const countryChanged = registerProfilesCountries(normalizedIncoming);
+  const backgroundChanged = registerProfilesBackgrounds(normalizedIncoming);
   normalizedIncoming.forEach(c=>{
     const code = normalizeCode(c.code);
     if(!code || code === myCode || seen.has(code) || swiped.has(code)) return;
@@ -1202,8 +1566,11 @@ async function fetchCandidates(){
     seen.add(code);
     deck.push({ ...c, code, interests, gender: c.gender || '' });
   });
-  if(changed){
+  if(countryChanged){
     updateCountryInsights();
+  }
+  if(backgroundChanged){
+    updateBackgroundInsights();
   }
   setStatus('', 'status2');
 }
@@ -1372,8 +1739,13 @@ function recordMatch(partner){
   );
   if(!seen.has(partnerCode)){ matchList.unshift(norm); }
   renderMatches();
-  if(registerStudentCountry(partnerCode, norm.partner.country || '')){
+  const countryUpdated = registerStudentCountry(partnerCode, norm.partner.country || '');
+  const backgroundUpdated = registerStudentBackground(partnerCode, norm.partner.background || '');
+  if(countryUpdated){
     updateCountryInsights();
+  }
+  if(backgroundUpdated){
+    updateBackgroundInsights();
   }
 }
 
@@ -1425,8 +1797,12 @@ function applyServerMatches(serverMatches){
   });
   matchList = deduped.sort((a,b)=> (b.ts||0)-(a.ts||0));
   renderMatches();
-  if(registerProfilesCountries(matchList.map(item => item && item.partner ? item.partner : null))){
+  const partnerProfiles = matchList.map(item => item && item.partner ? item.partner : null);
+  if(registerProfilesCountries(partnerProfiles)){
     updateCountryInsights();
+  }
+  if(registerProfilesBackgrounds(partnerProfiles)){
+    updateBackgroundInsights();
   }
 }
 
@@ -1491,8 +1867,16 @@ window.addEventListener('load', async ()=>{
         if(photoInput){ photoInput.value = ''; }
         matchList = res.matches||[];
         registerStudentCountry(joinCode, meProfile && meProfile.country ? meProfile.country : '');
-        registerProfilesCountries((matchList||[]).map(m => m && m.partner ? { code: m.partner.code || m.partner.id || '', country: m.partner.country || m.partner.nation || '' } : null));
+        registerStudentBackground(joinCode, meProfile && meProfile.background ? meProfile.background : '');
+        const storedMatchProfiles = (matchList||[]).map(m => m && m.partner ? {
+          code: m.partner.code || m.partner.id || '',
+          country: m.partner.country || m.partner.nation || '',
+          background: m.partner.background || m.partner.study || ''
+        } : null);
+        registerProfilesCountries(storedMatchProfiles);
+        registerProfilesBackgrounds(storedMatchProfiles);
         updateCountryInsights();
+        updateBackgroundInsights();
         el('me-name').textContent = meProfile.name || '—';
         el('me-code').textContent = joinCode;
         hide('screen-profile'); show('screen-swipe');
