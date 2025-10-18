@@ -4,6 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Yoobee Connect</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsvectormap@1.5.3/dist/css/jsvectormap.min.css" />
   <style>
     :root {
       --bg: #f5f5f7;
@@ -224,6 +225,38 @@
       padding: 22px;
       background: linear-gradient(135deg, rgba(10, 132, 255, 0.05), rgba(52, 199, 89, 0.05));
     }
+    .map-panel {
+      margin-top: 24px;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 20px;
+      background: var(--surface);
+      box-shadow: var(--shadow-soft);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .map-panel-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .map-panel-header h3 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: -0.2px;
+    }
+    #country-map {
+      width: 100%;
+      height: clamp(220px, 40vh, 360px);
+      min-height: 220px;
+      border-radius: 16px;
+      overflow: hidden;
+      position: relative;
+    }
     .who {
       font-size: 20px;
       font-weight: 600;
@@ -319,6 +352,9 @@
       .card {
         padding: 24px;
         border-radius: 18px;
+      }
+      #country-map {
+        height: clamp(200px, 45vh, 300px);
       }
       .actions {
         gap: 10px;
@@ -429,6 +465,14 @@
           <button class="btn acc" id="btn-right">👍 Connect</button>
           <button class="btn ghost" id="btn-refresh">↻ Refresh matches</button>
         </div>
+        <div class="map-panel" id="country-panel">
+          <div class="map-panel-header">
+            <h3>Where students are joining from</h3>
+            <div id="country-summary" class="small muted">No registered students yet.</div>
+          </div>
+          <div id="country-map" role="img" aria-label="World map of registered students"></div>
+          <div class="small muted">Drag to pan, pinch or scroll to zoom.</div>
+        </div>
         <div class="row">
           <button class="btn ghost" id="btn-logout">Sign out</button>
           <div id="status2" class="small muted center"></div>
@@ -451,6 +495,8 @@
     <a href="https://www.instagram.com/yasassri.me" target="_blank" rel="noopener noreferrer">Yasas Sri Wickramasinghe</a>.
   </footer>
 
+<script src="https://cdn.jsdelivr.net/npm/jsvectormap@1.5.3/dist/js/jsvectormap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsvectormap@1.5.3/dist/maps/world.js"></script>
 <script>
 /* ==========================
    CONFIG
@@ -467,6 +513,10 @@ let swiped = new Set();  // in-session memory
 let matchList = [];      // [{ts, partner:{...}}]
 let current = null;
 let draftPhoto = null;   // base64 data URL awaiting upload
+let studentCountries = new Map(); // Map<code,country>
+let countryMap = null;
+let countryMapSeries = null;
+let countryMapValues = {};
 
 // polling
 let matchPollTimer = null;
@@ -499,26 +549,249 @@ const normalizeCandidate = cand => {
 };
 const isValidEmail = email => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 const COUNTRY_LIST = [
-  'Afghanistan','Albania','Algeria','Andorra','Angola','Antigua and Barbuda','Argentina','Armenia','Australia','Austria',
-  'Azerbaijan','Bahamas','Bahrain','Bangladesh','Barbados','Belarus','Belgium','Belize','Benin','Bhutan','Bolivia',
-  'Bosnia and Herzegovina','Botswana','Brazil','Brunei','Bulgaria','Burkina Faso','Burundi','Cambodia','Cameroon','Canada',
-  'Cape Verde','Central African Republic','Chad','Chile','China','Colombia','Comoros','Congo (Republic)','Congo (DRC)',
-  'Costa Rica','Côte d\'Ivoire','Croatia','Cuba','Cyprus','Czech Republic','Denmark','Djibouti','Dominica','Dominican Republic','Ecuador',
-  'Egypt','El Salvador','Equatorial Guinea','Eritrea','Estonia','Eswatini','Ethiopia','Fiji','Finland','France','Gabon',
-  'Gambia','Georgia','Germany','Ghana','Greece','Grenada','Guatemala','Guinea','Guinea-Bissau','Guyana','Haiti','Honduras',
-  'Hungary','Iceland','India','Indonesia','Iran','Iraq','Ireland','Israel','Italy','Jamaica','Japan','Jordan','Kazakhstan',
-  'Kenya','Kiribati','Kuwait','Kyrgyzstan','Laos','Latvia','Lebanon','Lesotho','Liberia','Libya','Liechtenstein',
-  'Lithuania','Luxembourg','Madagascar','Malawi','Malaysia','Maldives','Mali','Malta','Marshall Islands','Mauritania',
-  'Mauritius','Mexico','Micronesia','Moldova','Monaco','Mongolia','Montenegro','Morocco','Mozambique','Myanmar','Namibia',
-  'Nauru','Nepal','Netherlands','New Zealand','Nicaragua','Niger','Nigeria','North Korea','North Macedonia','Norway','Oman',
-  'Pakistan','Palestine','Palau','Panama','Papua New Guinea','Paraguay','Peru','Philippines','Poland','Portugal','Qatar','Romania',
-  'Russia','Rwanda','Saint Kitts and Nevis','Saint Lucia','Saint Vincent and the Grenadines','Samoa','San Marino',
-  'Sao Tome and Principe','Saudi Arabia','Senegal','Serbia','Seychelles','Sierra Leone','Singapore','Slovakia','Slovenia',
-  'Solomon Islands','Somalia','South Africa','South Korea','South Sudan','Spain','Sri Lanka','Sudan','Suriname','Sweden',
-  'Switzerland','Syria','Taiwan','Tajikistan','Tanzania','Thailand','Timor-Leste','Togo','Tonga','Trinidad and Tobago',
-  'Tunisia','Turkey','Turkmenistan','Tuvalu','Uganda','Ukraine','United Arab Emirates','United Kingdom','United States',
-  'Uruguay','Uzbekistan','Vanuatu','Vatican City','Venezuela','Vietnam','Yemen','Zambia','Zimbabwe'
+  'Afghanistan', 'Albania', 'Algeria', 'Andorra', 'Angola', 'Antigua and Barbuda', 'Argentina', 'Armenia', 'Australia', 'Austria',
+  'Azerbaijan', 'Bahamas', 'Bahrain', 'Bangladesh', 'Barbados', 'Belarus', 'Belgium', 'Belize', 'Benin', 'Bhutan', 'Bolivia',
+  'Bosnia and Herzegovina', 'Botswana', 'Brazil', 'Brunei', 'Bulgaria', 'Burkina Faso', 'Burundi', 'Cambodia', 'Cameroon', 'Canada',
+  'Cape Verde', 'Central African Republic', 'Chad', 'Chile', 'China', 'Colombia', 'Comoros', 'Congo (Republic)', 'Congo (DRC)',
+  'Costa Rica', "Côte d'Ivoire", 'Croatia', 'Cuba', 'Cyprus', 'Czech Republic', 'Denmark', 'Djibouti', 'Dominica', 'Dominican Republic', 'Ecuador',
+  'Egypt', 'El Salvador', 'Equatorial Guinea', 'Eritrea', 'Estonia', 'Eswatini', 'Ethiopia', 'Fiji', 'Finland', 'France', 'Gabon',
+  'Gambia', 'Georgia', 'Germany', 'Ghana', 'Greece', 'Grenada', 'Guatemala', 'Guinea', 'Guinea-Bissau', 'Guyana', 'Haiti', 'Honduras',
+  'Hungary', 'Iceland', 'India', 'Indonesia', 'Iran', 'Iraq', 'Ireland', 'Israel', 'Italy', 'Jamaica', 'Japan', 'Jordan', 'Kazakhstan',
+  'Kenya', 'Kiribati', 'Kuwait', 'Kyrgyzstan', 'Laos', 'Latvia', 'Lebanon', 'Lesotho', 'Liberia', 'Libya', 'Liechtenstein',
+  'Lithuania', 'Luxembourg', 'Madagascar', 'Malawi', 'Malaysia', 'Maldives', 'Mali', 'Malta', 'Marshall Islands', 'Mauritania',
+  'Mauritius', 'Mexico', 'Micronesia', 'Moldova', 'Monaco', 'Mongolia', 'Montenegro', 'Morocco', 'Mozambique', 'Myanmar', 'Namibia',
+  'Nauru', 'Nepal', 'Netherlands', 'New Zealand', 'Nicaragua', 'Niger', 'Nigeria', 'North Korea', 'North Macedonia', 'Norway', 'Oman',
+  'Pakistan', 'Palestine', 'Palau', 'Panama', 'Papua New Guinea', 'Paraguay', 'Peru', 'Philippines', 'Poland', 'Portugal', 'Qatar', 'Romania',
+  'Russia', 'Rwanda', 'Saint Kitts and Nevis', 'Saint Lucia', 'Saint Vincent and the Grenadines', 'Samoa', 'San Marino',
+  'Sao Tome and Principe', 'Saudi Arabia', 'Senegal', 'Serbia', 'Seychelles', 'Sierra Leone', 'Singapore', 'Slovakia', 'Slovenia',
+  'Solomon Islands', 'Somalia', 'South Africa', 'South Korea', 'South Sudan', 'Spain', 'Sri Lanka', 'Sudan', 'Suriname', 'Sweden',
+  'Switzerland', 'Syria', 'Taiwan', 'Tajikistan', 'Tanzania', 'Thailand', 'Timor-Leste', 'Togo', 'Tonga', 'Trinidad and Tobago',
+  'Tunisia', 'Turkey', 'Turkmenistan', 'Tuvalu', 'Uganda', 'Ukraine', 'United Arab Emirates', 'United Kingdom', 'United States',
+  'Uruguay', 'Uzbekistan', 'Vanuatu', 'Vatican City', 'Venezuela', 'Vietnam', 'Yemen', 'Zambia', 'Zimbabwe'
 ];
+const COUNTRY_ALIASES = {
+  'us': 'United States',
+  'usa': 'United States',
+  'u.s.': 'United States',
+  'u.s.a': 'United States',
+  'united states of america': 'United States',
+  'states': 'United States',
+  'america': 'United States',
+  'uk': 'United Kingdom',
+  'u.k.': 'United Kingdom',
+  'england': 'United Kingdom',
+  'scotland': 'United Kingdom',
+  'wales': 'United Kingdom',
+  'northern ireland': 'United Kingdom',
+  'uae': 'United Arab Emirates',
+  'u.a.e': 'United Arab Emirates',
+  'emirates': 'United Arab Emirates',
+  'south korea': 'South Korea',
+  'republic of korea': 'South Korea',
+  'korea, republic of': 'South Korea',
+  'korea republic': 'South Korea',
+  'korea': 'South Korea',
+  'north korea': 'North Korea',
+  'peoples republic of china': 'China',
+  'mainland china': 'China',
+  'pr china': 'China',
+  'hong kong': 'Hong Kong',
+  'taiwan, province of china': 'Taiwan',
+  'viet nam': 'Vietnam',
+  'russian federation': 'Russia',
+  'czechia': 'Czech Republic',
+  'ivory coast': "Côte d'Ivoire",
+  'cote d\'ivoire': "Côte d'Ivoire",
+  'côte d\'ivoire': "Côte d'Ivoire",
+  'drc': 'Congo (DRC)',
+  'democratic republic of the congo': 'Congo (DRC)',
+  'republic of the congo': 'Congo (Republic)',
+  'congo': 'Congo (Republic)',
+  'myanmar (burma)': 'Myanmar',
+  'burma': 'Myanmar',
+  'swaziland': 'Eswatini',
+  'united republic of tanzania': 'Tanzania',
+  'syrian arab republic': 'Syria',
+  'islamic republic of iran': 'Iran',
+  'bolivia (plurinational state of)': 'Bolivia',
+  'lao people\'s democratic republic': 'Laos',
+  'kyrgyz republic': 'Kyrgyzstan',
+  'timor leste': 'Timor-Leste',
+  'macedonia': 'North Macedonia',
+  'brunei darussalam': 'Brunei',
+  'palestinian territories': 'Palestine',
+  'palestinian territory': 'Palestine'
+};
+const COUNTRY_NAME_TO_ISO = {
+  'Afghanistan': 'af', 'Albania': 'al', 'Algeria': 'dz', 'Andorra': 'ad', 'Angola': 'ao', 'Antigua and Barbuda': 'ag',
+  'Argentina': 'ar', 'Armenia': 'am', 'Australia': 'au', 'Austria': 'at', 'Azerbaijan': 'az', 'Bahamas': 'bs', 'Bahrain': 'bh', 'Bangladesh': 'bd',
+  'Barbados': 'bb', 'Belarus': 'by', 'Belgium': 'be', 'Belize': 'bz', 'Benin': 'bj', 'Bhutan': 'bt', 'Bolivia': 'bo', 'Bosnia and Herzegovina': 'ba',
+  'Botswana': 'bw', 'Brazil': 'br', 'Brunei': 'bn', 'Bulgaria': 'bg', 'Burkina Faso': 'bf', 'Burundi': 'bi', 'Cambodia': 'kh', 'Cameroon': 'cm',
+  'Canada': 'ca', 'Cape Verde': 'cv', 'Central African Republic': 'cf', 'Chad': 'td', 'Chile': 'cl', 'China': 'cn', 'Colombia': 'co', 'Comoros': 'km',
+  'Congo (Republic)': 'cg', 'Congo (DRC)': 'cd', 'Costa Rica': 'cr', "Côte d'Ivoire": 'ci', 'Croatia': 'hr', 'Cuba': 'cu', 'Cyprus': 'cy',
+  'Czech Republic': 'cz', 'Denmark': 'dk', 'Djibouti': 'dj', 'Dominica': 'dm', 'Dominican Republic': 'do', 'Ecuador': 'ec', 'Egypt': 'eg', 'El Salvador': 'sv',
+  'Equatorial Guinea': 'gq', 'Eritrea': 'er', 'Estonia': 'ee', 'Eswatini': 'sz', 'Ethiopia': 'et', 'Fiji': 'fj', 'Finland': 'fi', 'France': 'fr',
+  'Gabon': 'ga', 'Gambia': 'gm', 'Georgia': 'ge', 'Germany': 'de', 'Ghana': 'gh', 'Greece': 'gr', 'Grenada': 'gd', 'Guatemala': 'gt',
+  'Guinea': 'gn', 'Guinea-Bissau': 'gw', 'Guyana': 'gy', 'Haiti': 'ht', 'Honduras': 'hn', 'Hong Kong': 'hk', 'Hungary': 'hu', 'Iceland': 'is',
+  'India': 'in', 'Indonesia': 'id', 'Iran': 'ir', 'Iraq': 'iq', 'Ireland': 'ie', 'Israel': 'il', 'Italy': 'it', 'Jamaica': 'jm', 'Japan': 'jp', 'Jordan': 'jo',
+  'Kazakhstan': 'kz', 'Kenya': 'ke', 'Kiribati': 'ki', 'Kuwait': 'kw', 'Kyrgyzstan': 'kg', 'Laos': 'la', 'Latvia': 'lv', 'Lebanon': 'lb', 'Lesotho': 'ls',
+  'Liberia': 'lr', 'Libya': 'ly', 'Liechtenstein': 'li', 'Lithuania': 'lt', 'Luxembourg': 'lu', 'Madagascar': 'mg', 'Malawi': 'mw', 'Malaysia': 'my',
+  'Maldives': 'mv', 'Mali': 'ml', 'Malta': 'mt', 'Marshall Islands': 'mh', 'Mauritania': 'mr', 'Mauritius': 'mu', 'Mexico': 'mx', 'Micronesia': 'fm',
+  'Moldova': 'md', 'Monaco': 'mc', 'Mongolia': 'mn', 'Montenegro': 'me', 'Morocco': 'ma', 'Mozambique': 'mz', 'Myanmar': 'mm', 'Namibia': 'na',
+  'Nauru': 'nr', 'Nepal': 'np', 'Netherlands': 'nl', 'New Zealand': 'nz', 'Nicaragua': 'ni', 'Niger': 'ne', 'Nigeria': 'ng', 'North Korea': 'kp',
+  'North Macedonia': 'mk', 'Norway': 'no', 'Oman': 'om', 'Pakistan': 'pk', 'Palau': 'pw', 'Palestine': 'ps', 'Panama': 'pa', 'Papua New Guinea': 'pg',
+  'Paraguay': 'py', 'Peru': 'pe', 'Philippines': 'ph', 'Poland': 'pl', 'Portugal': 'pt', 'Qatar': 'qa', 'Romania': 'ro', 'Russia': 'ru', 'Rwanda': 'rw',
+  'Saint Kitts and Nevis': 'kn', 'Saint Lucia': 'lc', 'Saint Vincent and the Grenadines': 'vc', 'Samoa': 'ws', 'San Marino': 'sm', 'Sao Tome and Principe': 'st',
+  'Saudi Arabia': 'sa', 'Senegal': 'sn', 'Serbia': 'rs', 'Seychelles': 'sc', 'Sierra Leone': 'sl', 'Singapore': 'sg', 'Slovakia': 'sk', 'Slovenia': 'si',
+  'Solomon Islands': 'sb', 'Somalia': 'so', 'South Africa': 'za', 'South Korea': 'kr', 'South Sudan': 'ss', 'Spain': 'es', 'Sri Lanka': 'lk', 'Sudan': 'sd',
+  'Suriname': 'sr', 'Sweden': 'se', 'Switzerland': 'ch', 'Syria': 'sy', 'Taiwan': 'tw', 'Tajikistan': 'tj', 'Tanzania': 'tz', 'Thailand': 'th', 'Timor-Leste': 'tl',
+  'Togo': 'tg', 'Tonga': 'to', 'Trinidad and Tobago': 'tt', 'Tunisia': 'tn', 'Turkey': 'tr', 'Turkmenistan': 'tm', 'Tuvalu': 'tv', 'Uganda': 'ug', 'Ukraine': 'ua',
+  'United Arab Emirates': 'ae', 'United Kingdom': 'gb', 'United States': 'us', 'Uruguay': 'uy', 'Uzbekistan': 'uz', 'Vanuatu': 'vu', 'Vatican City': 'va',
+  'Venezuela': 've', 'Vietnam': 'vn', 'Yemen': 'ye', 'Zambia': 'zm', 'Zimbabwe': 'zw'
+};
+const COUNTRY_ISO_TO_NAME = Object.fromEntries(Object.entries(COUNTRY_NAME_TO_ISO).map(([name, code]) => [code, name]));
+function normalizeCountryName(name){
+  if(!name) return '';
+  const trimmed = String(name).trim();
+  if(!trimmed) return '';
+  const lower = trimmed.toLowerCase();
+  if(COUNTRY_ALIASES[lower]) return COUNTRY_ALIASES[lower];
+  const direct = COUNTRY_LIST.find(country => country.toLowerCase() === lower);
+  if(direct) return direct;
+  return trimmed
+    .replace(/\s+/g, ' ')
+    .split(' ')
+    .map(part => part ? part.charAt(0).toUpperCase() + part.slice(1) : '')
+    .join(' ');
+}
+function registerStudentCountry(code, country){
+  const normalizedCode = normalizeCode(code);
+  if(!normalizedCode) return false;
+  const normalizedCountry = normalizeCountryName(country);
+  if(!normalizedCountry){
+    if(studentCountries.has(normalizedCode)){
+      studentCountries.delete(normalizedCode);
+      return true;
+    }
+    return false;
+  }
+  const existing = studentCountries.get(normalizedCode);
+  if(existing === normalizedCountry) return false;
+  studentCountries.set(normalizedCode, normalizedCountry);
+  return true;
+}
+function registerProfilesCountries(list){
+  if(!Array.isArray(list)) return false;
+  let changed = false;
+  list.forEach(profile => {
+    if(!profile) return;
+    const code = profile.code || profile.id || '';
+    if(registerStudentCountry(code, profile.country || profile.nation || '')){
+      changed = true;
+    }
+  });
+  return changed;
+}
+function getCountryCounts(){
+  const counts = new Map();
+  studentCountries.forEach(country => {
+    if(!country) return;
+    counts.set(country, (counts.get(country) || 0) + 1);
+  });
+  return counts;
+}
+function ensureCountryMap(){
+  if(countryMap) return countryMap;
+  if(typeof jsVectorMap === 'undefined') return null;
+  const node = el('country-map');
+  if(!node) return null;
+  node.innerHTML = '';
+  countryMapValues = {};
+  countryMap = new jsVectorMap({
+    selector: '#country-map',
+    map: 'world',
+    zoomButtons: true,
+    regionStyle: {
+      initial: {
+        fill: '#eef2f9',
+        stroke: '#d0d7e2',
+        strokeWidth: 0.6
+      },
+      hover: {
+        fill: '#0A84FF'
+      }
+    },
+    series: {
+      regions: [{
+        values: {},
+        scale: ['#E0F2FF', '#0A84FF'],
+        normalizeFunction: 'linear'
+      }]
+    },
+    onRegionTooltipShow(event, tooltip, code){
+      const key = (code || '').toLowerCase();
+      const name = COUNTRY_ISO_TO_NAME[key] || tooltip.text() || (code ? code.toUpperCase() : '');
+      const count = countryMapValues[key] || 0;
+      if(count > 0){
+        tooltip.html(`<b>${name}</b><br/>Students: ${count}`);
+      }else{
+        tooltip.html(`<b>${name}</b><br/>No registered students yet`);
+      }
+    }
+  });
+  countryMapSeries = countryMap.series && countryMap.series.regions ? countryMap.series.regions[0] : null;
+  return countryMap;
+}
+
+function renderCountryMap(){
+  const map = ensureCountryMap();
+  if(!map || !countryMapSeries) return;
+  const counts = getCountryCounts();
+  const values = {};
+  counts.forEach((value, name) => {
+    const iso = COUNTRY_NAME_TO_ISO[name];
+    if(!iso) return;
+    const key = iso.toLowerCase();
+    values[key] = value;
+  });
+  countryMapSeries.setValues({});
+  countryMapValues = { ...values };
+  if(Object.keys(values).length){
+    countryMapSeries.setValues(values);
+  }
+}
+function updateCountrySummary(){
+  const summary = el('country-summary');
+  if(!summary) return;
+  const counts = getCountryCounts();
+  const totalStudents = Array.from(studentCountries.values()).filter(Boolean).length;
+  if(!totalStudents){
+    summary.textContent = 'No registered students yet.';
+    return;
+  }
+  const totalCountries = counts.size;
+  const studentWord = totalStudents === 1 ? 'student' : 'students';
+  const countryWord = totalCountries === 1 ? 'country' : 'countries';
+  summary.textContent = `${totalStudents} registered ${studentWord} from ${totalCountries} ${countryWord}.`;
+}
+function updateCountryInsights(){
+  updateCountrySummary();
+  try {
+    renderCountryMap();
+  } catch (err) {
+    console.error('Failed to render country map', err);
+  }
+  refreshCountryMapSize();
+}
+function refreshCountryMapSize(){
+  if(countryMap && typeof countryMap.updateSize === 'function'){
+    countryMap.updateSize();
+  }
+}
+function onSwipeScreenVisible(){
+  requestAnimationFrame(() => refreshCountryMapSize());
+  setTimeout(refreshCountryMapSize, 180);
+}
 
 function normalizePhotoData(data){
   if(typeof data !== 'string') return '';
@@ -722,11 +995,18 @@ function loadSession(){
   if(!meProfile || typeof meProfile !== 'object'){ meProfile = {}; }
   applyProfilePhoto(meProfile);
   draftPhoto = '';
+  studentCountries.clear();
+  if(joinCode && meProfile && meProfile.country){
+    registerStudentCountry(joinCode, meProfile.country);
+  }
+  updateCountryInsights();
 }
 function clearSession(){
   localStorage.removeItem('yc_code');
   localStorage.removeItem('yc_profile');
   draftPhoto = '';
+  studentCountries.clear();
+  updateCountryInsights();
 }
 
 /* ==========================
@@ -832,6 +1112,8 @@ async function saveProfile(){
       meProfile.photo = normalizePhotoData(photoData);
     }
   }
+  registerStudentCountry(joinCode, meProfile && meProfile.country ? meProfile.country : country);
+  updateCountryInsights();
   draftPhoto = '';
   saveSession();
   populateProfileFormFromState();
@@ -844,6 +1126,7 @@ async function saveProfile(){
   if(photoInput){ photoInput.value = ''; }
   setStatus('');
   hide('screen-profile'); show('screen-swipe');
+  onSwipeScreenVisible();
   startMatchPolling();
   await fetchCandidates();
   await syncMatchesFromServer(); // hydrate
@@ -867,6 +1150,9 @@ async function restore(){
   meProfile = res.profile||{};
   applyProfilePhoto(meProfile);
   matchList = Array.isArray(res.matches)? res.matches : [];
+  registerStudentCountry(joinCode, meProfile && meProfile.country ? meProfile.country : '');
+  registerProfilesCountries((matchList||[]).map(m => m && m.partner ? { code: m.partner.code || m.partner.id || '', country: m.partner.country || m.partner.nation || '' } : null));
+  updateCountryInsights();
   saveSession();
   populateProfileFormFromState();
   draftPhoto = '';
@@ -878,6 +1164,7 @@ async function restore(){
   el('me-code').textContent = joinCode;
   setStatus('');
   hide('screen-profile'); show('screen-swipe');
+  onSwipeScreenVisible();
   startMatchPolling();
   renderMatches();
   await fetchCandidates();
@@ -914,20 +1201,24 @@ async function fetchCandidates(){
   const myCode = normalizeCode(joinCode);
   const seen = new Set(deck.map(d=> normalizeCode(d.code)));
   const incoming = Array.isArray(res.candidates) ? res.candidates : [];
-  incoming
+  const normalizedIncoming = incoming
     .map(normalizeCandidate)
-    .filter(Boolean)
-    .forEach(c=>{
-      const code = normalizeCode(c.code);
-      if(!code || code === myCode || seen.has(code) || swiped.has(code)) return;
-      const interests = Array.isArray(c.interests)
-        ? c.interests.slice()
-        : (typeof c.interests === 'string' && c.interests.trim()
-            ? c.interests.split(/[,;|]/).map(t => t.trim()).filter(Boolean)
-            : []);
-      seen.add(code);
-      deck.push({ ...c, code, interests, gender: c.gender || '' });
-    });
+    .filter(Boolean);
+  const changed = registerProfilesCountries(normalizedIncoming);
+  normalizedIncoming.forEach(c=>{
+    const code = normalizeCode(c.code);
+    if(!code || code === myCode || seen.has(code) || swiped.has(code)) return;
+    const interests = Array.isArray(c.interests)
+      ? c.interests.slice()
+      : (typeof c.interests === 'string' && c.interests.trim()
+          ? c.interests.split(/[,;|]/).map(t => t.trim()).filter(Boolean)
+          : []);
+    seen.add(code);
+    deck.push({ ...c, code, interests, gender: c.gender || '' });
+  });
+  if(changed){
+    updateCountryInsights();
+  }
   setStatus('', 'status2');
 }
 
@@ -1095,6 +1386,9 @@ function recordMatch(partner){
   );
   if(!seen.has(partnerCode)){ matchList.unshift(norm); }
   renderMatches();
+  if(registerStudentCountry(partnerCode, norm.partner.country || '')){
+    updateCountryInsights();
+  }
 }
 
 function applyServerMatches(serverMatches){
@@ -1145,6 +1439,9 @@ function applyServerMatches(serverMatches){
   });
   matchList = deduped.sort((a,b)=> (b.ts||0)-(a.ts||0));
   renderMatches();
+  if(registerProfilesCountries(matchList.map(item => item && item.partner ? item.partner : null))){
+    updateCountryInsights();
+  }
 }
 
 async function syncMatchesFromServer(){
@@ -1164,6 +1461,7 @@ function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, m => ({'&':'&am
 /* ==========================
    WIRE UP
 ========================== */
+window.addEventListener('resize', refreshCountryMapSize);
 el('btn-register').addEventListener('click', saveProfile);
 el('btn-restore').addEventListener('click', restore);
 el('btn-logout').addEventListener('click', logout);
@@ -1206,9 +1504,13 @@ window.addEventListener('load', async ()=>{
         const photoInput = el('photo');
         if(photoInput){ photoInput.value = ''; }
         matchList = res.matches||[];
+        registerStudentCountry(joinCode, meProfile && meProfile.country ? meProfile.country : '');
+        registerProfilesCountries((matchList||[]).map(m => m && m.partner ? { code: m.partner.code || m.partner.id || '', country: m.partner.country || m.partner.nation || '' } : null));
+        updateCountryInsights();
         el('me-name').textContent = meProfile.name || '—';
         el('me-code').textContent = joinCode;
         hide('screen-profile'); show('screen-swipe');
+        onSwipeScreenVisible();
         startMatchPolling();
         renderMatches();
         await fetchCandidates();
