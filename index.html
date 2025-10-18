@@ -224,6 +224,37 @@
       padding: 22px;
       background: linear-gradient(135deg, rgba(10, 132, 255, 0.05), rgba(52, 199, 89, 0.05));
     }
+    .map-panel {
+      margin-top: 24px;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 20px;
+      background: var(--surface);
+      box-shadow: var(--shadow-soft);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .map-panel-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .map-panel-header h3 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: -0.2px;
+    }
+    #country-map {
+      width: 100%;
+      height: clamp(220px, 40vh, 360px);
+      min-height: 220px;
+      border-radius: 16px;
+      overflow: hidden;
+    }
     .who {
       font-size: 20px;
       font-weight: 600;
@@ -319,6 +350,9 @@
       .card {
         padding: 24px;
         border-radius: 18px;
+      }
+      #country-map {
+        height: clamp(200px, 45vh, 300px);
       }
       .actions {
         gap: 10px;
@@ -429,6 +463,14 @@
           <button class="btn acc" id="btn-right">👍 Connect</button>
           <button class="btn ghost" id="btn-refresh">↻ Refresh matches</button>
         </div>
+        <div class="map-panel" id="country-panel">
+          <div class="map-panel-header">
+            <h3>Where students are joining from</h3>
+            <div id="country-summary" class="small muted">No registered students yet.</div>
+          </div>
+          <div id="country-map" role="img" aria-label="World map of registered students"></div>
+          <div class="small muted">Drag to pan, pinch or scroll to zoom.</div>
+        </div>
         <div class="row">
           <button class="btn ghost" id="btn-logout">Sign out</button>
           <div id="status2" class="small muted center"></div>
@@ -451,6 +493,8 @@
     <a href="https://www.instagram.com/yasassri.me" target="_blank" rel="noopener noreferrer">Yasas Sri Wickramasinghe</a>.
   </footer>
 
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/map/js/world.js"></script>
 <script>
 /* ==========================
    CONFIG
@@ -467,6 +511,8 @@ let swiped = new Set();  // in-session memory
 let matchList = [];      // [{ts, partner:{...}}]
 let current = null;
 let draftPhoto = null;   // base64 data URL awaiting upload
+let studentCountries = new Map(); // Map<code,country>
+let countryMapChart = null;
 
 // polling
 let matchPollTimer = null;
@@ -519,6 +565,191 @@ const COUNTRY_LIST = [
   'Tunisia','Turkey','Turkmenistan','Tuvalu','Uganda','Ukraine','United Arab Emirates','United Kingdom','United States',
   'Uruguay','Uzbekistan','Vanuatu','Vatican City','Venezuela','Vietnam','Yemen','Zambia','Zimbabwe'
 ];
+const COUNTRY_ALIASES = {
+  'us': 'United States',
+  'usa': 'United States',
+  'u.s.': 'United States',
+  'u.s.a': 'United States',
+  'united states of america': 'United States',
+  'states': 'United States',
+  'america': 'United States',
+  'uk': 'United Kingdom',
+  'u.k.': 'United Kingdom',
+  'england': 'United Kingdom',
+  'scotland': 'United Kingdom',
+  'wales': 'United Kingdom',
+  'northern ireland': 'United Kingdom',
+  'uae': 'United Arab Emirates',
+  'u.a.e': 'United Arab Emirates',
+  'emirates': 'United Arab Emirates',
+  'south korea': 'South Korea',
+  'republic of korea': 'South Korea',
+  'korea, republic of': 'South Korea',
+  'korea republic': 'South Korea',
+  'korea': 'South Korea',
+  'north korea': 'North Korea',
+  'peoples republic of china': 'China',
+  'mainland china': 'China',
+  'pr china': 'China',
+  'hong kong': 'Hong Kong',
+  'taiwan, province of china': 'Taiwan',
+  'viet nam': 'Vietnam',
+  'russian federation': 'Russia',
+  'czechia': 'Czech Republic',
+  'ivory coast': "Côte d'Ivoire",
+  'cote d\'ivoire': "Côte d'Ivoire",
+  'côte d\'ivoire': "Côte d'Ivoire",
+  'drc': 'Congo (DRC)',
+  'democratic republic of the congo': 'Congo (DRC)',
+  'republic of the congo': 'Congo (Republic)',
+  'congo': 'Congo (Republic)',
+  'myanmar (burma)': 'Myanmar',
+  'burma': 'Myanmar',
+  'swaziland': 'Eswatini',
+  'united republic of tanzania': 'Tanzania',
+  'syrian arab republic': 'Syria',
+  'islamic republic of iran': 'Iran',
+  'bolivia (plurinational state of)': 'Bolivia',
+  'lao people\'s democratic republic': 'Laos',
+  'kyrgyz republic': 'Kyrgyzstan',
+  'timor leste': 'Timor-Leste',
+  'macedonia': 'North Macedonia',
+  'brunei darussalam': 'Brunei',
+  'palestinian territories': 'Palestine',
+  'palestinian territory': 'Palestine'
+};
+function normalizeCountryName(name){
+  if(!name) return '';
+  const trimmed = String(name).trim();
+  if(!trimmed) return '';
+  const lower = trimmed.toLowerCase();
+  if(COUNTRY_ALIASES[lower]) return COUNTRY_ALIASES[lower];
+  const direct = COUNTRY_LIST.find(country => country.toLowerCase() === lower);
+  if(direct) return direct;
+  return trimmed
+    .replace(/\s+/g, ' ')
+    .split(' ')
+    .map(part => part ? part.charAt(0).toUpperCase() + part.slice(1) : '')
+    .join(' ');
+}
+function registerStudentCountry(code, country){
+  const normalizedCode = normalizeCode(code);
+  if(!normalizedCode) return false;
+  const normalizedCountry = normalizeCountryName(country);
+  if(!normalizedCountry){
+    if(studentCountries.has(normalizedCode)){
+      studentCountries.delete(normalizedCode);
+      return true;
+    }
+    return false;
+  }
+  const existing = studentCountries.get(normalizedCode);
+  if(existing === normalizedCountry) return false;
+  studentCountries.set(normalizedCode, normalizedCountry);
+  return true;
+}
+function registerProfilesCountries(list){
+  if(!Array.isArray(list)) return false;
+  let changed = false;
+  list.forEach(profile => {
+    if(!profile) return;
+    const code = profile.code || profile.id || '';
+    if(registerStudentCountry(code, profile.country || profile.nation || '')){
+      changed = true;
+    }
+  });
+  return changed;
+}
+function getCountryCounts(){
+  const counts = new Map();
+  studentCountries.forEach(country => {
+    if(!country) return;
+    counts.set(country, (counts.get(country) || 0) + 1);
+  });
+  return counts;
+}
+function ensureCountryMap(){
+  if(countryMapChart) return countryMapChart;
+  if(typeof echarts === 'undefined') return null;
+  const node = el('country-map');
+  if(!node) return null;
+  countryMapChart = echarts.init(node);
+  return countryMapChart;
+}
+function renderCountryMap(){
+  const chart = ensureCountryMap();
+  if(!chart) return;
+  const counts = getCountryCounts();
+  const data = Array.from(counts.entries()).map(([name, value]) => ({ name, value }));
+  const maxValue = data.reduce((max, item) => Math.max(max, item.value), 0);
+  const option = {
+    tooltip: {
+      trigger: 'item',
+      formatter: params => {
+        if(!params) return '';
+        const value = typeof params.value === 'number' && !Number.isNaN(params.value) ? params.value : 0;
+        if(value > 0){
+          return `${params.name}<br/>Students: ${value}`;
+        }
+        return `${params.name}<br/>No registered students yet`;
+      }
+    },
+    visualMap: {
+      show: false,
+      min: 0,
+      max: Math.max(1, maxValue),
+      inRange: { color: ['#E0F2FF', '#0A84FF'] }
+    },
+    series: [{
+      name: 'Registered students',
+      type: 'map',
+      map: 'world',
+      roam: true,
+      emphasis: {
+        label: { show: false },
+        itemStyle: {
+          areaColor: '#0A84FF',
+          shadowBlur: 12,
+          shadowColor: 'rgba(10, 132, 255, 0.35)'
+        }
+      },
+      itemStyle: {
+        borderColor: '#d0d7e2',
+        areaColor: '#eef2f9'
+      },
+      data
+    }]
+  };
+  chart.setOption(option, true);
+}
+function updateCountrySummary(){
+  const summary = el('country-summary');
+  if(!summary) return;
+  const counts = getCountryCounts();
+  const totalStudents = Array.from(studentCountries.values()).filter(Boolean).length;
+  if(!totalStudents){
+    summary.textContent = 'No registered students yet.';
+    return;
+  }
+  const totalCountries = counts.size;
+  const studentWord = totalStudents === 1 ? 'student' : 'students';
+  const countryWord = totalCountries === 1 ? 'country' : 'countries';
+  summary.textContent = `${totalStudents} registered ${studentWord} from ${totalCountries} ${countryWord}.`;
+}
+function updateCountryInsights(){
+  updateCountrySummary();
+  renderCountryMap();
+  refreshCountryMapSize();
+}
+function refreshCountryMapSize(){
+  if(countryMapChart){
+    countryMapChart.resize();
+  }
+}
+function onSwipeScreenVisible(){
+  requestAnimationFrame(() => refreshCountryMapSize());
+  setTimeout(refreshCountryMapSize, 180);
+}
 
 function normalizePhotoData(data){
   if(typeof data !== 'string') return '';
@@ -722,11 +953,18 @@ function loadSession(){
   if(!meProfile || typeof meProfile !== 'object'){ meProfile = {}; }
   applyProfilePhoto(meProfile);
   draftPhoto = '';
+  studentCountries.clear();
+  if(joinCode && meProfile && meProfile.country){
+    registerStudentCountry(joinCode, meProfile.country);
+  }
+  updateCountryInsights();
 }
 function clearSession(){
   localStorage.removeItem('yc_code');
   localStorage.removeItem('yc_profile');
   draftPhoto = '';
+  studentCountries.clear();
+  updateCountryInsights();
 }
 
 /* ==========================
@@ -832,6 +1070,8 @@ async function saveProfile(){
       meProfile.photo = normalizePhotoData(photoData);
     }
   }
+  registerStudentCountry(joinCode, meProfile && meProfile.country ? meProfile.country : country);
+  updateCountryInsights();
   draftPhoto = '';
   saveSession();
   populateProfileFormFromState();
@@ -844,6 +1084,7 @@ async function saveProfile(){
   if(photoInput){ photoInput.value = ''; }
   setStatus('');
   hide('screen-profile'); show('screen-swipe');
+  onSwipeScreenVisible();
   startMatchPolling();
   await fetchCandidates();
   await syncMatchesFromServer(); // hydrate
@@ -867,6 +1108,9 @@ async function restore(){
   meProfile = res.profile||{};
   applyProfilePhoto(meProfile);
   matchList = Array.isArray(res.matches)? res.matches : [];
+  registerStudentCountry(joinCode, meProfile && meProfile.country ? meProfile.country : '');
+  registerProfilesCountries((matchList||[]).map(m => m && m.partner ? { code: m.partner.code || m.partner.id || '', country: m.partner.country || m.partner.nation || '' } : null));
+  updateCountryInsights();
   saveSession();
   populateProfileFormFromState();
   draftPhoto = '';
@@ -878,6 +1122,7 @@ async function restore(){
   el('me-code').textContent = joinCode;
   setStatus('');
   hide('screen-profile'); show('screen-swipe');
+  onSwipeScreenVisible();
   startMatchPolling();
   renderMatches();
   await fetchCandidates();
@@ -914,20 +1159,24 @@ async function fetchCandidates(){
   const myCode = normalizeCode(joinCode);
   const seen = new Set(deck.map(d=> normalizeCode(d.code)));
   const incoming = Array.isArray(res.candidates) ? res.candidates : [];
-  incoming
+  const normalizedIncoming = incoming
     .map(normalizeCandidate)
-    .filter(Boolean)
-    .forEach(c=>{
-      const code = normalizeCode(c.code);
-      if(!code || code === myCode || seen.has(code) || swiped.has(code)) return;
-      const interests = Array.isArray(c.interests)
-        ? c.interests.slice()
-        : (typeof c.interests === 'string' && c.interests.trim()
-            ? c.interests.split(/[,;|]/).map(t => t.trim()).filter(Boolean)
-            : []);
-      seen.add(code);
-      deck.push({ ...c, code, interests, gender: c.gender || '' });
-    });
+    .filter(Boolean);
+  const changed = registerProfilesCountries(normalizedIncoming);
+  normalizedIncoming.forEach(c=>{
+    const code = normalizeCode(c.code);
+    if(!code || code === myCode || seen.has(code) || swiped.has(code)) return;
+    const interests = Array.isArray(c.interests)
+      ? c.interests.slice()
+      : (typeof c.interests === 'string' && c.interests.trim()
+          ? c.interests.split(/[,;|]/).map(t => t.trim()).filter(Boolean)
+          : []);
+    seen.add(code);
+    deck.push({ ...c, code, interests, gender: c.gender || '' });
+  });
+  if(changed){
+    updateCountryInsights();
+  }
   setStatus('', 'status2');
 }
 
@@ -1095,6 +1344,9 @@ function recordMatch(partner){
   );
   if(!seen.has(partnerCode)){ matchList.unshift(norm); }
   renderMatches();
+  if(registerStudentCountry(partnerCode, norm.partner.country || '')){
+    updateCountryInsights();
+  }
 }
 
 function applyServerMatches(serverMatches){
@@ -1145,6 +1397,9 @@ function applyServerMatches(serverMatches){
   });
   matchList = deduped.sort((a,b)=> (b.ts||0)-(a.ts||0));
   renderMatches();
+  if(registerProfilesCountries(matchList.map(item => item && item.partner ? item.partner : null))){
+    updateCountryInsights();
+  }
 }
 
 async function syncMatchesFromServer(){
@@ -1164,6 +1419,7 @@ function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, m => ({'&':'&am
 /* ==========================
    WIRE UP
 ========================== */
+window.addEventListener('resize', refreshCountryMapSize);
 el('btn-register').addEventListener('click', saveProfile);
 el('btn-restore').addEventListener('click', restore);
 el('btn-logout').addEventListener('click', logout);
@@ -1206,9 +1462,13 @@ window.addEventListener('load', async ()=>{
         const photoInput = el('photo');
         if(photoInput){ photoInput.value = ''; }
         matchList = res.matches||[];
+        registerStudentCountry(joinCode, meProfile && meProfile.country ? meProfile.country : '');
+        registerProfilesCountries((matchList||[]).map(m => m && m.partner ? { code: m.partner.code || m.partner.id || '', country: m.partner.country || m.partner.nation || '' } : null));
+        updateCountryInsights();
         el('me-name').textContent = meProfile.name || '—';
         el('me-code').textContent = joinCode;
         hide('screen-profile'); show('screen-swipe');
+        onSwipeScreenVisible();
         startMatchPolling();
         renderMatches();
         await fetchCandidates();
