@@ -682,7 +682,7 @@ function ensureWorldMapData(){
   if(typeof echarts === 'undefined' || typeof echarts.getMap !== 'function') return false;
   if(echarts.getMap('world')) return true;
   if(worldMapLoading) return false;
-  const WORLD_MAP_URL = 'https://fastly.jsdelivr.net/npm/echarts@5.5.0/examples/data/asset/geo/world.json';
+  const WORLD_MAP_URL = 'https://echarts.apache.org/examples/data/asset/geo/world.json';
   worldMapLoading = true;
   fetch(WORLD_MAP_URL)
     .then(response => {
@@ -1535,4 +1535,5 @@ window.addEventListener('load', populateCountries);
 </script>
 </body>
 </html>
+
 
