@@ -255,40 +255,6 @@
       min-height: 220px;
       border-radius: 16px;
       overflow: hidden;
-      position: relative;
-      background: radial-gradient(circle at 20% 20%, rgba(10, 132, 255, 0.08), transparent 55%),
-                  radial-gradient(circle at 80% 30%, rgba(52, 199, 89, 0.08), transparent 60%),
-                  #f0f4ff;
-      border: 1px solid rgba(10, 132, 255, 0.18);
-    }
-    .map-fallback {
-      border-radius: 16px;
-      border: 1px dashed rgba(10, 132, 255, 0.35);
-      padding: 18px;
-      background: rgba(10, 132, 255, 0.08);
-      color: var(--text);
-      font-size: 13px;
-      line-height: 1.5;
-      min-height: clamp(220px, 40vh, 360px);
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      gap: 8px;
-      text-align: center;
-    }
-    .map-fallback strong {
-      display: block;
-      font-size: 14px;
-      margin-bottom: 8px;
-    }
-    .map-fallback ul {
-      margin: 8px 0 0;
-      padding-left: 20px;
-      text-align: left;
-      align-self: stretch;
-    }
-    .map-fallback li {
-      margin-bottom: 4px;
     }
     .who {
       font-size: 20px;
@@ -504,7 +470,6 @@
             <div id="country-summary" class="small muted">No registered students yet.</div>
           </div>
           <div id="country-map" role="img" aria-label="World map of registered students"></div>
-          <div id="country-map-fallback" class="map-fallback hidden" aria-live="polite"></div>
           <div class="small muted">Drag to pan, pinch or scroll to zoom.</div>
         </div>
         <div class="row">
@@ -529,8 +494,8 @@
     <a href="https://www.instagram.com/yasassri.me" target="_blank" rel="noopener noreferrer">Yasas Sri Wickramasinghe</a>.
   </footer>
 
-<script src="https://cdn.jsdelivr.net/npm/jsvectormap@1.5.3/dist/js/jsvectormap.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jsvectormap@1.5.3/dist/maps/world.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/map/js/world.js"></script>
 <script>
 /* ==========================
    CONFIG
@@ -548,10 +513,7 @@ let matchList = [];      // [{ts, partner:{...}}]
 let current = null;
 let draftPhoto = null;   // base64 data URL awaiting upload
 let studentCountries = new Map(); // Map<code,country>
-let countryMap = null;
-let countryMapSeries = null;
-let countryMapValues = {};
-let countryMapInitPending = false;
+let countryMapChart = null;
 
 // polling
 let matchPollTimer = null;
@@ -657,34 +619,6 @@ const COUNTRY_ALIASES = {
   'palestinian territories': 'Palestine',
   'palestinian territory': 'Palestine'
 };
-const COUNTRY_NAME_TO_ISO = {
-  'Afghanistan': 'af', 'Albania': 'al', 'Algeria': 'dz', 'Andorra': 'ad', 'Angola': 'ao', 'Antigua and Barbuda': 'ag',
-  'Argentina': 'ar', 'Armenia': 'am', 'Australia': 'au', 'Austria': 'at', 'Azerbaijan': 'az', 'Bahamas': 'bs', 'Bahrain': 'bh', 'Bangladesh': 'bd',
-  'Barbados': 'bb', 'Belarus': 'by', 'Belgium': 'be', 'Belize': 'bz', 'Benin': 'bj', 'Bhutan': 'bt', 'Bolivia': 'bo', 'Bosnia and Herzegovina': 'ba',
-  'Botswana': 'bw', 'Brazil': 'br', 'Brunei': 'bn', 'Bulgaria': 'bg', 'Burkina Faso': 'bf', 'Burundi': 'bi', 'Cambodia': 'kh', 'Cameroon': 'cm',
-  'Canada': 'ca', 'Cape Verde': 'cv', 'Central African Republic': 'cf', 'Chad': 'td', 'Chile': 'cl', 'China': 'cn', 'Colombia': 'co', 'Comoros': 'km',
-  'Congo (Republic)': 'cg', 'Congo (DRC)': 'cd', 'Costa Rica': 'cr', "Côte d'Ivoire": 'ci', 'Croatia': 'hr', 'Cuba': 'cu', 'Cyprus': 'cy',
-  'Czech Republic': 'cz', 'Denmark': 'dk', 'Djibouti': 'dj', 'Dominica': 'dm', 'Dominican Republic': 'do', 'Ecuador': 'ec', 'Egypt': 'eg', 'El Salvador': 'sv',
-  'Equatorial Guinea': 'gq', 'Eritrea': 'er', 'Estonia': 'ee', 'Eswatini': 'sz', 'Ethiopia': 'et', 'Fiji': 'fj', 'Finland': 'fi', 'France': 'fr',
-  'Gabon': 'ga', 'Gambia': 'gm', 'Georgia': 'ge', 'Germany': 'de', 'Ghana': 'gh', 'Greece': 'gr', 'Grenada': 'gd', 'Guatemala': 'gt',
-  'Guinea': 'gn', 'Guinea-Bissau': 'gw', 'Guyana': 'gy', 'Haiti': 'ht', 'Honduras': 'hn', 'Hong Kong': 'hk', 'Hungary': 'hu', 'Iceland': 'is',
-  'India': 'in', 'Indonesia': 'id', 'Iran': 'ir', 'Iraq': 'iq', 'Ireland': 'ie', 'Israel': 'il', 'Italy': 'it', 'Jamaica': 'jm', 'Japan': 'jp', 'Jordan': 'jo',
-  'Kazakhstan': 'kz', 'Kenya': 'ke', 'Kiribati': 'ki', 'Kuwait': 'kw', 'Kyrgyzstan': 'kg', 'Laos': 'la', 'Latvia': 'lv', 'Lebanon': 'lb', 'Lesotho': 'ls',
-  'Liberia': 'lr', 'Libya': 'ly', 'Liechtenstein': 'li', 'Lithuania': 'lt', 'Luxembourg': 'lu', 'Madagascar': 'mg', 'Malawi': 'mw', 'Malaysia': 'my',
-  'Maldives': 'mv', 'Mali': 'ml', 'Malta': 'mt', 'Marshall Islands': 'mh', 'Mauritania': 'mr', 'Mauritius': 'mu', 'Mexico': 'mx', 'Micronesia': 'fm',
-  'Moldova': 'md', 'Monaco': 'mc', 'Mongolia': 'mn', 'Montenegro': 'me', 'Morocco': 'ma', 'Mozambique': 'mz', 'Myanmar': 'mm', 'Namibia': 'na',
-  'Nauru': 'nr', 'Nepal': 'np', 'Netherlands': 'nl', 'New Zealand': 'nz', 'Nicaragua': 'ni', 'Niger': 'ne', 'Nigeria': 'ng', 'North Korea': 'kp',
-  'North Macedonia': 'mk', 'Norway': 'no', 'Oman': 'om', 'Pakistan': 'pk', 'Palau': 'pw', 'Palestine': 'ps', 'Panama': 'pa', 'Papua New Guinea': 'pg',
-  'Paraguay': 'py', 'Peru': 'pe', 'Philippines': 'ph', 'Poland': 'pl', 'Portugal': 'pt', 'Qatar': 'qa', 'Romania': 'ro', 'Russia': 'ru', 'Rwanda': 'rw',
-  'Saint Kitts and Nevis': 'kn', 'Saint Lucia': 'lc', 'Saint Vincent and the Grenadines': 'vc', 'Samoa': 'ws', 'San Marino': 'sm', 'Sao Tome and Principe': 'st',
-  'Saudi Arabia': 'sa', 'Senegal': 'sn', 'Serbia': 'rs', 'Seychelles': 'sc', 'Sierra Leone': 'sl', 'Singapore': 'sg', 'Slovakia': 'sk', 'Slovenia': 'si',
-  'Solomon Islands': 'sb', 'Somalia': 'so', 'South Africa': 'za', 'South Korea': 'kr', 'South Sudan': 'ss', 'Spain': 'es', 'Sri Lanka': 'lk', 'Sudan': 'sd',
-  'Suriname': 'sr', 'Sweden': 'se', 'Switzerland': 'ch', 'Syria': 'sy', 'Taiwan': 'tw', 'Tajikistan': 'tj', 'Tanzania': 'tz', 'Thailand': 'th', 'Timor-Leste': 'tl',
-  'Togo': 'tg', 'Tonga': 'to', 'Trinidad and Tobago': 'tt', 'Tunisia': 'tn', 'Turkey': 'tr', 'Turkmenistan': 'tm', 'Tuvalu': 'tv', 'Uganda': 'ug', 'Ukraine': 'ua',
-  'United Arab Emirates': 'ae', 'United Kingdom': 'gb', 'United States': 'us', 'Uruguay': 'uy', 'Uzbekistan': 'uz', 'Vanuatu': 'vu', 'Vatican City': 'va',
-  'Venezuela': 've', 'Vietnam': 'vn', 'Yemen': 'ye', 'Zambia': 'zm', 'Zimbabwe': 'zw'
-};
-const COUNTRY_ISO_TO_NAME = Object.fromEntries(Object.entries(COUNTRY_NAME_TO_ISO).map(([name, code]) => [code, name]));
 function normalizeCountryName(name){
   if(!name) return '';
   const trimmed = String(name).trim();
@@ -735,119 +669,59 @@ function getCountryCounts(){
   });
   return counts;
 }
-function hideCountryFallback(){
-  const fallback = el('country-map-fallback');
-  if(fallback){
-    fallback.classList.add('hidden');
-    fallback.innerHTML = '';
-  }
-  const mapNode = el('country-map');
-  if(mapNode){
-    mapNode.classList.remove('hidden');
-  }
-}
-function showCountryFallback(counts){
-  const fallback = el('country-map-fallback');
-  const mapNode = el('country-map');
-  if(mapNode){
-    mapNode.classList.add('hidden');
-  }
-  countryMapInitPending = false;
-  if(!fallback) return;
-  const list = Array.isArray(counts)
-    ? counts
-    : Array.from((counts && typeof counts.entries === 'function') ? counts.entries() : getCountryCounts().entries());
-  if(!list.length){
-    fallback.innerHTML = '<strong>World map unavailable</strong><div class="muted">We\'ll show country stats here once students start registering.</div>';
-  }else{
-    const top = list
-      .slice()
-      .sort((a,b) => (b[1]||0) - (a[1]||0))
-      .slice(0, 6)
-      .map(([name, total]) => {
-        const safeName = escapeHtml(name);
-        return `<li><span>${safeName}</span> — ${total} ${total === 1 ? 'student' : 'students'}</li>`;
-      })
-      .join('');
-    fallback.innerHTML = `<strong>World map unavailable</strong><div class="muted">Here are the top countries so far:</div><ul>${top}</ul>`;
-  }
-  fallback.classList.remove('hidden');
-}
-function ensureCountryMap(force = false){
-  if(countryMap && !force) return countryMap;
-  if(typeof jsVectorMap === 'undefined') return null;
+function ensureCountryMap(){
+  if(countryMapChart) return countryMapChart;
+  if(typeof echarts === 'undefined') return null;
   const node = el('country-map');
   if(!node) return null;
-  const rect = node.getBoundingClientRect();
-  if(!force && (rect.width === 0 || rect.height === 0)){
-    countryMapInitPending = true;
-    return null;
-  }
-  if(countryMap && typeof countryMap.destroy === 'function'){
-    countryMap.destroy();
-  }
-  countryMap = null;
-  countryMapSeries = null;
-  node.innerHTML = '';
-  countryMapValues = {};
-  countryMap = new jsVectorMap({
-    selector: '#country-map',
-    map: 'world',
-    backgroundColor: '#f0f4ff',
-    zoomButtons: true,
-    regionStyle: {
-      initial: {
-        fill: '#cddbf8',
-        stroke: '#7a93c7',
-        strokeWidth: 0.8
-      },
-      hover: {
-        fill: '#0A84FF'
-      }
-    },
-    series: {
-      regions: [{
-        values: {},
-        scale: ['#E0F2FF', '#0A84FF'],
-        normalizeFunction: 'linear'
-      }]
-    },
-    onRegionTooltipShow(event, tooltip, code){
-      const key = (code || '').toLowerCase();
-      const name = COUNTRY_ISO_TO_NAME[key] || tooltip.text() || (code ? code.toUpperCase() : '');
-      const count = countryMapValues[key] || 0;
-      if(count > 0){
-        tooltip.html(`<b>${name}</b><br/>Students: ${count}`);
-      }else{
-        tooltip.html(`<b>${name}</b><br/>No registered students yet`);
-      }
-    }
-  });
-  countryMapSeries = countryMap.series && countryMap.series.regions ? countryMap.series.regions[0] : null;
-  countryMapInitPending = false;
-  return countryMap;
+  countryMapChart = echarts.init(node);
+  return countryMapChart;
 }
-
-function renderCountryMap(force = false){
+function renderCountryMap(){
+  const chart = ensureCountryMap();
+  if(!chart) return;
   const counts = getCountryCounts();
-  const map = ensureCountryMap(force);
-  if(!map || !countryMapSeries){
-    showCountryFallback(counts);
-    return;
-  }
-  hideCountryFallback();
-  const values = {};
-  counts.forEach((value, name) => {
-    const iso = COUNTRY_NAME_TO_ISO[name];
-    if(!iso) return;
-    const key = iso.toLowerCase();
-    values[key] = value;
-  });
-  countryMapSeries.setValues({});
-  countryMapValues = { ...values };
-  if(Object.keys(values).length){
-    countryMapSeries.setValues(values);
-  }
+  const data = Array.from(counts.entries()).map(([name, value]) => ({ name, value }));
+  const maxValue = data.reduce((max, item) => Math.max(max, item.value), 0);
+  const option = {
+    tooltip: {
+      trigger: 'item',
+      formatter: params => {
+        if(!params) return '';
+        const value = typeof params.value === 'number' && !Number.isNaN(params.value) ? params.value : 0;
+        if(value > 0){
+          return `${params.name}<br/>Students: ${value}`;
+        }
+        return `${params.name}<br/>No registered students yet`;
+      }
+    },
+    visualMap: {
+      show: false,
+      min: 0,
+      max: Math.max(1, maxValue),
+      inRange: { color: ['#E0F2FF', '#0A84FF'] }
+    },
+    series: [{
+      name: 'Registered students',
+      type: 'map',
+      map: 'world',
+      roam: true,
+      emphasis: {
+        label: { show: false },
+        itemStyle: {
+          areaColor: '#0A84FF',
+          shadowBlur: 12,
+          shadowColor: 'rgba(10, 132, 255, 0.35)'
+        }
+      },
+      itemStyle: {
+        borderColor: '#d0d7e2',
+        areaColor: '#eef2f9'
+      },
+      data
+    }]
+  };
+  chart.setOption(option, true);
 }
 function updateCountrySummary(){
   const summary = el('country-summary');
@@ -865,31 +739,17 @@ function updateCountrySummary(){
 }
 function updateCountryInsights(){
   updateCountrySummary();
-  try {
-    renderCountryMap();
-  } catch (err) {
-    console.error('Failed to render country map', err);
-  }
+  renderCountryMap();
   refreshCountryMapSize();
 }
 function refreshCountryMapSize(){
-  if(countryMap && typeof countryMap.updateSize === 'function'){
-    countryMap.updateSize();
+  if(countryMapChart){
+    countryMapChart.resize();
   }
 }
 function onSwipeScreenVisible(){
-  requestAnimationFrame(() => {
-    if(countryMapInitPending || !countryMap){
-      renderCountryMap(true);
-    }
-    refreshCountryMapSize();
-  });
-  setTimeout(() => {
-    if(countryMapInitPending || !countryMap){
-      renderCountryMap(true);
-    }
-    refreshCountryMapSize();
-  }, 220);
+  requestAnimationFrame(() => refreshCountryMapSize());
+  setTimeout(refreshCountryMapSize, 180);
 }
 
 function normalizePhotoData(data){
