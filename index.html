@@ -514,6 +514,7 @@ let current = null;
 let draftPhoto = null;   // base64 data URL awaiting upload
 let studentCountries = new Map(); // Map<code,country>
 let countryMapChart = null;
+let worldMapLoading = false;
 
 // polling
 let matchPollTimer = null;
@@ -677,9 +678,35 @@ function ensureCountryMap(){
   countryMapChart = echarts.init(node);
   return countryMapChart;
 }
+function ensureWorldMapData(){
+  if(typeof echarts === 'undefined' || typeof echarts.getMap !== 'function') return false;
+  if(echarts.getMap('world')) return true;
+  if(worldMapLoading) return false;
+  const WORLD_MAP_URL = 'https://fastly.jsdelivr.net/npm/echarts@5.5.0/examples/data/asset/geo/world.json';
+  worldMapLoading = true;
+  fetch(WORLD_MAP_URL)
+    .then(response => {
+      if(!response.ok) throw new Error(`Failed to load world map: ${response.status}`);
+      return response.json();
+    })
+    .then(geoJson => {
+      if(geoJson){
+        echarts.registerMap('world', geoJson);
+        renderCountryMap();
+      }
+    })
+    .catch(error => {
+      console.error('Unable to initialise world map', error);
+    })
+    .finally(() => {
+      worldMapLoading = false;
+    });
+  return false;
+}
 function renderCountryMap(){
   const chart = ensureCountryMap();
   if(!chart) return;
+  if(!ensureWorldMapData()) return;
   const counts = getCountryCounts();
   const data = Array.from(counts.entries()).map(([name, value]) => ({ name, value }));
   const maxValue = data.reduce((max, item) => Math.max(max, item.value), 0);
