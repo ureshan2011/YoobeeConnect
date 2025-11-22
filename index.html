@@ -422,7 +422,7 @@
     <div class="stack">
       <div class="card" id="screen-profile">
         <h1>Yoobee Connect</h1>
-        <h2>Create your profile (one-time)</h2>
+        <h2 id="profile-subtitle">Create your profile (one-time)</h2>
         <div class="spacer"></div>
         <div class="row">
           <div>
@@ -529,6 +529,7 @@
           <div id="background-list" class="background-list"></div>
         </div>
         <div class="row">
+          <button class="btn ghost" id="btn-edit-profile">✏️ Edit profile</button>
           <button class="btn ghost" id="btn-logout">Sign out</button>
           <div id="status2" class="small muted center"></div>
         </div>
@@ -1372,6 +1373,15 @@ function populateProfileFormFromState(){
   }
   refreshPhotoPreview();
   setPhotoStatus('');
+  const subtitle = el('profile-subtitle');
+  const hasCode = !!normalizeCode(joinCode);
+  if(subtitle){
+    subtitle.textContent = hasCode ? 'Update your profile' : 'Create your profile (one-time)';
+  }
+  const saveBtn = el('btn-register');
+  if(saveBtn){
+    saveBtn.textContent = hasCode ? 'Save changes' : 'Save & Start';
+  }
 }
 
 /* ==========================
@@ -1491,20 +1501,25 @@ async function saveProfile(){
     setStatus(msg);
     return;
   }
-  setStatus('Saving…');
+  const isUpdate = !!normalizeCode(joinCode);
+  setStatus(isUpdate ? 'Updating your profile…' : 'Saving…');
   let res;
   try{
-    res = await apiPost({ action:'register', name, campus, gender, country, background, interests, hobbies, teams: contactEmail, photoData });
+    const payload = { action: isUpdate ? 'update' : 'register', name, campus, gender, country, background, interests, hobbies, teams: contactEmail, photoData };
+    if(isUpdate){ payload.code = joinCode; }
+    res = await apiPost(payload);
   }catch(e){
     setStatus('Save failed: ' + e.message);
     return;
   }
   if(!res.ok){ setStatus('Error: ' + res.error); return; }
 
-  joinCode = normalizeCode(res.code);
+  joinCode = normalizeCode(res.code || joinCode);
   meProfile = res.profile||{};
   applyProfilePhoto(meProfile);
   if(meProfile){
+    meProfile.name = meProfile.name || name;
+    meProfile.campus = meProfile.campus || campus;
     meProfile.country = meProfile.country || country;
     meProfile.interests = Array.isArray(meProfile.interests) && meProfile.interests.length ? meProfile.interests : interestList;
     meProfile.hobbies = Array.isArray(meProfile.hobbies) && meProfile.hobbies.length ? meProfile.hobbies : hobbyList;
@@ -1530,6 +1545,10 @@ async function saveProfile(){
   const photoInput = el('photo');
   if(photoInput){ photoInput.value = ''; }
   setStatus('');
+  setStatus(isUpdate ? 'Profile updated.' : '', 'status2');
+  deck = [];
+  swiped.clear();
+  current = null;
   hide('screen-profile'); show('screen-swipe');
   onSwipeScreenVisible();
   startMatchPolling();
@@ -1593,6 +1612,14 @@ function logout(){
   el('matches').innerHTML = '';
   hide('screen-swipe'); show('screen-profile');
   setStatus('', 'status2');
+  populateProfileFormFromState();
+}
+
+function openProfileEditor(){
+  setStatus('');
+  setStatus('', 'status2');
+  hide('screen-swipe');
+  show('screen-profile');
   populateProfileFormFromState();
 }
 
@@ -1894,6 +1921,7 @@ function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, m => ({'&':'&am
 window.addEventListener('resize', refreshCountryMapSize);
 el('btn-register').addEventListener('click', () => runUiTask('register', ['btn-register','btn-restore'], () => saveProfile()));
 el('btn-restore').addEventListener('click', () => runUiTask('restore', ['btn-register','btn-restore'], () => restore()));
+el('btn-edit-profile').addEventListener('click', openProfileEditor);
 el('btn-logout').addEventListener('click', logout);
 el('btn-left').addEventListener('click', () => runUiTask('swipe', ['btn-left','btn-right'], () => onSwipe('left')));
 el('btn-right').addEventListener('click', () => runUiTask('swipe', ['btn-left','btn-right'], () => onSwipe('right')));

@@ -16,7 +16,7 @@ var SHEET_NAMES = {
 };
 
 var DEFAULT_HEADERS = {
-  profiles: ['timestamp','code','name','campus','country','background','interests','teams','photo'],
+  profiles: ['timestamp','code','name','campus','gender','country','background','interests','hobbies','teams','photo'],
   swipes:   ['timestamp','swiper','target','dir'],
   matches:  ['timestamp','code_a','code_b']
 };
@@ -25,9 +25,11 @@ var PROFILE_ALIASES = {
   code:      ['code','join_code','joincode','profile_code','id'],
   name:      ['name','full_name','fullname','display_name','displayname'],
   campus:    ['campus','campus_name','campusname','location'],
+  gender:    ['gender','sex','identity'],
   country:   ['country','country_name','countryname','nation'],
   background:['background','programme','program','study','major','course'],
   interests: ['interests','interest','tags','skills'],
+  hobbies:   ['hobbies','hobby','pastimes','leisure'],
   teams:     ['teams','contact','email','handle','reachout'],
   photo:     ['photo','profilephoto','picture','avatar','image','photodata','photo_data','photourl'],
   timestamp: ['timestamp','ts','created','created_at','createdat','submitted']
@@ -88,6 +90,9 @@ function doPost(e){
       case 'register':
         out = handleRegister(body);
         break;
+      case 'update':
+        out = handleUpdate(body);
+        break;
       case 'swipe':
         out = handleSwipe(body);
         break;
@@ -146,9 +151,11 @@ function handleCandidates(params){
         code: p.code,
         name: p.name,
         campus: p.campus,
+        gender: p.gender,
         country: p.country,
         background: p.background,
         interests: Array.isArray(p.interests) ? p.interests.slice() : [],
+        hobbies: Array.isArray(p.hobbies) ? p.hobbies.slice() : [],
         photo: p.photo || ''
       };
     });
@@ -159,26 +166,71 @@ function handleCandidates(params){
 function handleRegister(body){
   var name       = sanitizeString(body.name);
   var campus     = sanitizeString(body.campus);
+  var gender     = sanitizeString(body.gender);
   var country    = sanitizeString(body.country);
   var background = sanitizeString(body.background);
   if(!name || !campus || !country || !background){
     return createError('Name, campus, country, and background are required.');
   }
   var interests = normalizeInterests(body.interests);
+  var hobbies   = normalizeHobbies(body.hobbies);
   var teams     = sanitizeString(body.teams);
   var photo     = sanitizeImageData(body.photoData || body.photo || body.avatar || '');
 
   var ctx  = loadProfiles();
   var code = generateJoinCode(ctx.map);
   var profile = {
-    code: code, name: name, campus: campus, country: country,
-    background: background, interests: interests, teams: teams,
+    code: code, name: name, campus: campus, gender: gender, country: country,
+    background: background, interests: interests, hobbies: hobbies, teams: teams,
     photo: photo,
     timestamp: new Date()
   };
   appendProfile(profile, ctx);
 
   return { ok:true, code: code, profile: extendProfileWithMatches(profile, []), matches: [] };
+}
+
+function handleUpdate(body){
+  var code = sanitizeCode(body.code);
+  if(!code) return createError('Missing join code');
+
+  var ctx = loadProfiles();
+  var existing = ctx.map.get(code);
+  if(!existing) return createError('Profile not found for code ' + code);
+
+  var name       = sanitizeString(body.name)       || existing.name;
+  var campus     = sanitizeString(body.campus)     || existing.campus;
+  var gender     = sanitizeString(body.gender);
+  var country    = sanitizeString(body.country)    || existing.country;
+  var background = sanitizeString(body.background) || existing.background;
+  var interests  = normalizeInterests(body.interests);
+  var hobbies    = normalizeHobbies(body.hobbies);
+  var teams      = sanitizeString(body.teams);
+  var photo      = sanitizeImageData(body.photoData || body.photo || body.avatar || '') || existing.photo || '';
+
+  if(!name || !campus || !country || !background){
+    return createError('Name, campus, country, and background are required.');
+  }
+
+  var profile = {
+    code: code,
+    name: name,
+    campus: campus,
+    gender: gender || existing.gender || '',
+    country: country,
+    background: background,
+    interests: interests.length ? interests : (existing.interests || []),
+    hobbies: hobbies.length ? hobbies : (existing.hobbies || []),
+    teams: teams || existing.teams || '',
+    photo: photo,
+    timestamp: new Date(),
+    row: existing.row
+  };
+
+  updateProfile(profile, ctx);
+
+  var matches = loadMatchesForCode(code, ctx);
+  return { ok:true, code: code, profile: extendProfileWithMatches(profile, matches), matches: matches };
 }
 
 function handleSwipe(body){
@@ -214,9 +266,11 @@ function loadProfiles(){
     code:       findColumnIndex(table, PROFILE_ALIASES.code),
     name:       findColumnIndex(table, PROFILE_ALIASES.name),
     campus:     findColumnIndex(table, PROFILE_ALIASES.campus),
+    gender:     findColumnIndex(table, PROFILE_ALIASES.gender),
     country:    findColumnIndex(table, PROFILE_ALIASES.country),
     background: findColumnIndex(table, PROFILE_ALIASES.background),
     interests:  findColumnIndex(table, PROFILE_ALIASES.interests),
+    hobbies:    findColumnIndex(table, PROFILE_ALIASES.hobbies),
     teams:      findColumnIndex(table, PROFILE_ALIASES.teams),
     photo:      findColumnIndex(table, PROFILE_ALIASES.photo),
     timestamp:  findColumnIndex(table, PROFILE_ALIASES.timestamp)
@@ -235,12 +289,15 @@ function loadProfiles(){
       code: code,
       name:       idx.name       !== -1 ? sanitizeString(row[idx.name])       : '',
       campus:     idx.campus     !== -1 ? sanitizeString(row[idx.campus])     : '',
+      gender:     idx.gender     !== -1 ? sanitizeString(row[idx.gender])     : '',
       country:    idx.country    !== -1 ? sanitizeString(row[idx.country])    : '',
       background: idx.background !== -1 ? sanitizeString(row[idx.background]) : '',
       interests:  idx.interests  !== -1 ? normalizeInterests(row[idx.interests]) : [],
+      hobbies:    idx.hobbies    !== -1 ? normalizeHobbies(row[idx.hobbies])    : [],
       teams:      idx.teams      !== -1 ? sanitizeString(row[idx.teams])      : '',
       photo:      idx.photo      !== -1 ? sanitizeImageData(row[idx.photo])    : '',
-      timestamp:  idx.timestamp  !== -1 ? parseTimestamp(row[idx.timestamp])  : null
+      timestamp:  idx.timestamp  !== -1 ? parseTimestamp(row[idx.timestamp])  : null,
+      row: i + 2
     });
   }
   return { map: map, table: table, indexes: idx };
@@ -253,23 +310,65 @@ function appendProfile(profile, ctx){
   if(ctx.indexes.code      !== -1){ row[ctx.indexes.code]      = profile.code; }
   if(ctx.indexes.name      !== -1){ row[ctx.indexes.name]      = profile.name; }
   if(ctx.indexes.campus    !== -1){ row[ctx.indexes.campus]    = profile.campus; }
+  if(ctx.indexes.gender    !== -1){ row[ctx.indexes.gender]    = profile.gender || ''; }
   if(ctx.indexes.country   !== -1){ row[ctx.indexes.country]   = profile.country; }
   if(ctx.indexes.background!== -1){ row[ctx.indexes.background]= profile.background; }
   if(ctx.indexes.interests !== -1){ row[ctx.indexes.interests] = profile.interests.join(', '); }
+  if(ctx.indexes.hobbies   !== -1){ row[ctx.indexes.hobbies]   = profile.hobbies.join(', '); }
   if(ctx.indexes.teams     !== -1){ row[ctx.indexes.teams]     = profile.teams; }
   if(ctx.indexes.photo     !== -1){ row[ctx.indexes.photo]     = profile.photo || ''; }
   t.sheet.appendRow(row);
+  var savedRow = t.sheet.getLastRow();
 
   ctx.map.set(profile.code, {
     code: profile.code,
     name: profile.name,
     campus: profile.campus,
+    gender: profile.gender || '',
     country: profile.country,
     background: profile.background,
     interests: profile.interests.slice(),
+    hobbies: profile.hobbies.slice(),
     teams: profile.teams,
     photo: profile.photo || '',
-    timestamp: profile.timestamp instanceof Date ? profile.timestamp.getTime() : profile.timestamp
+    timestamp: profile.timestamp instanceof Date ? profile.timestamp.getTime() : profile.timestamp,
+    row: savedRow
+  });
+}
+
+function updateProfile(profile, ctx){
+  var t = ctx.table;
+  var rowIndex = profile.row;
+  if(!rowIndex || rowIndex < 2) throw new Error('Cannot update profile without row reference');
+  var current = t.sheet.getRange(rowIndex,1,1,t.header.length).getValues()[0];
+
+  if(ctx.indexes.timestamp !== -1){ current[ctx.indexes.timestamp] = profile.timestamp instanceof Date ? profile.timestamp : new Date(profile.timestamp||Date.now()); }
+  if(ctx.indexes.code      !== -1){ current[ctx.indexes.code]      = profile.code; }
+  if(ctx.indexes.name      !== -1){ current[ctx.indexes.name]      = profile.name; }
+  if(ctx.indexes.campus    !== -1){ current[ctx.indexes.campus]    = profile.campus; }
+  if(ctx.indexes.gender    !== -1){ current[ctx.indexes.gender]    = profile.gender || ''; }
+  if(ctx.indexes.country   !== -1){ current[ctx.indexes.country]   = profile.country; }
+  if(ctx.indexes.background!== -1){ current[ctx.indexes.background]= profile.background; }
+  if(ctx.indexes.interests !== -1){ current[ctx.indexes.interests] = Array.isArray(profile.interests) ? profile.interests.join(', ') : ''; }
+  if(ctx.indexes.hobbies   !== -1){ current[ctx.indexes.hobbies]   = Array.isArray(profile.hobbies) ? profile.hobbies.join(', ') : ''; }
+  if(ctx.indexes.teams     !== -1){ current[ctx.indexes.teams]     = profile.teams; }
+  if(ctx.indexes.photo     !== -1){ current[ctx.indexes.photo]     = profile.photo || ''; }
+
+  t.sheet.getRange(rowIndex,1,1,current.length).setValues([current]);
+
+  ctx.map.set(profile.code, {
+    code: profile.code,
+    name: profile.name,
+    campus: profile.campus,
+    gender: profile.gender || '',
+    country: profile.country,
+    background: profile.background,
+    interests: Array.isArray(profile.interests) ? profile.interests.slice() : [],
+    hobbies: Array.isArray(profile.hobbies) ? profile.hobbies.slice() : [],
+    teams: profile.teams,
+    photo: profile.photo || '',
+    timestamp: profile.timestamp instanceof Date ? profile.timestamp.getTime() : profile.timestamp,
+    row: rowIndex
   });
 }
 
@@ -439,9 +538,11 @@ function extendProfileWithMatches(p, matches){
     code: p.code,
     name: p.name,
     campus: p.campus,
+    gender: p.gender,
     country: p.country,
     background: p.background,
     interests: Array.isArray(p.interests) ? p.interests.slice() : [],
+    hobbies: Array.isArray(p.hobbies) ? p.hobbies.slice() : [],
     teams: p.teams || '',
     photo: p.photo || ''
   };
@@ -457,9 +558,11 @@ function clonePartner(p, includeCode){
     code: includeCode ? (p.code || '') : undefined,
     name: p.name || '',
     campus: p.campus || '',
+    gender: p.gender || '',
     country: p.country || '',
     background: p.background || '',
     interests: Array.isArray(p.interests) ? p.interests.slice() : [],
+    hobbies: Array.isArray(p.hobbies) ? p.hobbies.slice() : [],
     teams: p.teams || '',
     photo: p.photo || ''
   };
