@@ -1,81 +1,38 @@
 /**
- * Yoobee Connect — Google Apps Script backend
- * Endpoints:
+ * Yoobee Connect — Student data backend (Google Apps Script)
+ *
+ * Supported endpoints:
  *   GET  ?action=ping
- *   GET  ?action=restore&code=ABC123
- *   GET  ?action=matches&code=ABC123
- *   GET  ?action=candidates&code=ABC123
- *   POST {action:'register', name, campus, country, background, interests, teams}
- *   POST {action:'swipe', code, target, dir:'left'|'right'}
+ *   GET  ?action=dashboard_summary
+ *   GET  ?action=students
+ *   POST {action:'register', code?, name, campus, homeCountry, programme, email, notes?}
+ *   POST {action:'update', code, name?, campus?, homeCountry?, programme?, email?, notes?}
+ *   POST {action:'reset_data', confirmToken:'ERASE_ALL_2026'}
  */
 
-var SHEET_NAMES = {
-  PROFILES: 'profiles',
-  SWIPES:   'swipes',
-  MATCHES:  'matches'
-};
-
-var DEFAULT_HEADERS = {
-  profiles: ['timestamp','code','name','campus','gender','country','background','interests','hobbies','teams','photo'],
-  swipes:   ['timestamp','swiper','target','dir'],
-  matches:  ['timestamp','code_a','code_b']
-};
+var SHEET_NAME = 'profiles';
+var PROFILE_HEADERS = ['timestamp','code','name','campus','home_country','programme','email','notes'];
+var RESET_TOKEN = 'ERASE_ALL_2026';
 
 var PROFILE_ALIASES = {
-  code:      ['code','join_code','joincode','profile_code','id'],
-  name:      ['name','full_name','fullname','display_name','displayname'],
-  campus:    ['campus','campus_name','campusname','location'],
-  gender:    ['gender','sex','identity'],
-  country:   ['country','country_name','countryname','nation'],
-  background:['background','programme','program','study','major','course'],
-  interests: ['interests','interest','tags','skills'],
-  hobbies:   ['hobbies','hobby','pastimes','leisure'],
-  teams:     ['teams','contact','email','handle','reachout'],
-  photo:     ['photo','profilephoto','picture','avatar','image','photodata','photo_data','photourl'],
-  timestamp: ['timestamp','ts','created','created_at','createdat','submitted']
+  timestamp:   ['timestamp','ts','created','created_at'],
+  code:        ['code','student_id','studentid','id','join_code'],
+  name:        ['name','full_name','fullname'],
+  campus:      ['campus','campus_name','location'],
+  homeCountry: ['home_country','homecountry','country','country_name','nation'],
+  programme:   ['programme','program','background','major','course'],
+  email:       ['email','contact','contact_email','teams'],
+  notes:       ['notes','note','comments','comment']
 };
 
-var SWIPE_ALIASES = {
-  swiper:    ['swiper','code','from','source','source_code'],
-  target:    ['target','candidate','to','destination','target_code'],
-  dir:       ['dir','direction','choice','decision','swipe'],
-  timestamp: ['timestamp','ts','created','created_at','createdat']
-};
-
-var MATCH_ALIASES = {
-  codeA:     ['code_a','codea','user_a','usera','initiator','source','from'],
-  codeB:     ['code_b','codeb','user_b','userb','partner','target','to'],
-  timestamp: ['timestamp','ts','matched_at','matchedat','created','created_at','createdat','time']
-};
-
-var MS_PER_DAY  = 24 * 60 * 60 * 1000;
-var EXCEL_EPOCH = new Date('1899-12-30T00:00:00Z').getTime();
-
-/* ==========================
-   HTTP ENTRYPOINTS
-========================== */
 function doGet(e){
   try{
-    var p = e && e.parameter ? e.parameter : {};
-    var action = (p.action || '').toLowerCase();
-    var out;
-    switch(action){
-      case 'ping':
-        out = { ok:true, version:'yc-2025-10-17' };
-        break;
-      case 'restore':
-        out = handleRestore(p);
-        break;
-      case 'matches':
-        out = handleMatches(p);
-        break;
-      case 'candidates':
-        out = handleCandidates(p);
-        break;
-      default:
-        out = createError('Unsupported action: ' + action);
-    }
-    return respondJson(out);
+    var params = (e && e.parameter) ? e.parameter : {};
+    var action = sanitizeString(params.action).toLowerCase();
+    if(action === 'ping') return respondJson({ ok: true, version: 'student-insights-2026-04-10' });
+    if(action === 'dashboard_summary') return respondJson(handleDashboardSummary());
+    if(action === 'students') return respondJson(handleStudents());
+    return respondJson(createError('Unsupported action: ' + action));
   }catch(err){
     return respondJson(createError(err));
   }
@@ -83,540 +40,240 @@ function doGet(e){
 
 function doPost(e){
   try{
-    var body = parseBody(e);           // front-end sends text/plain JSON
-    var action = (body.action || '').toLowerCase();
-    var out;
-    switch(action){
-      case 'register':
-        out = handleRegister(body);
-        break;
-      case 'update':
-        out = handleUpdate(body);
-        break;
-      case 'swipe':
-        out = handleSwipe(body);
-        break;
-      default:
-        out = createError('Unsupported action: ' + action);
-    }
-    return respondJson(out);
+    var body = parseBody(e);
+    var action = sanitizeString(body.action).toLowerCase();
+    if(action === 'register') return respondJson(handleRegister(body));
+    if(action === 'update') return respondJson(handleUpdate(body));
+    if(action === 'reset_data') return respondJson(handleResetData(body));
+    return respondJson(createError('Unsupported action: ' + action));
   }catch(err){
     return respondJson(createError(err));
   }
 }
 
-/* ==========================
-   HANDLERS
-========================== */
-function handleRestore(params){
-  var code = sanitizeCode(params.code);
-  if(!code) return createError('Missing join code');
-
-  var profiles = loadProfiles();
-  var me = profiles.map.get(code);
-  if(!me) return createError('Profile not found for code ' + code);
-
-  var matches = loadMatchesForCode(code, profiles);
-  return { ok:true, profile: extendProfileWithMatches(me, matches), matches: matches };
-}
-
-function handleMatches(params){
-  var code = sanitizeCode(params.code);
-  if(!code) return createError('Missing join code');
-
-  var profiles = loadProfiles();
-  var me = profiles.map.get(code);
-  if(!me) return createError('Profile not found for code ' + code);
-
-  var matches = loadMatchesForCode(code, profiles);
-  return { ok:true, code: code, matches: matches, profile: extendProfileWithMatches(me, matches) };
-}
-
-function handleCandidates(params){
-  var code = sanitizeCode(params.code);
-  if(!code) return createError('Missing join code');
-
-  var profiles = loadProfiles();
-  if(!profiles.map.has(code)) return createError('Profile not found for code ' + code);
-
-  var rel = getUserRelations(code, profiles);
-  var swipedSet  = rel.swipedTargets;     // already swiped (L/R)
-  var matchedSet = rel.matchedPartners;   // already matched
-
-  var candidates = Array.from(profiles.map.values())
-    .filter(function(p){ return p.code !== code; })
-    .filter(function(p){ return !swipedSet.has(p.code) && !matchedSet.has(p.code); })
-    .map(function(p){
-      return {
-        code: p.code,
-        name: p.name,
-        campus: p.campus,
-        gender: p.gender,
-        country: p.country,
-        background: p.background,
-        interests: Array.isArray(p.interests) ? p.interests.slice() : [],
-        hobbies: Array.isArray(p.hobbies) ? p.hobbies.slice() : [],
-        photo: p.photo || ''
-      };
-    });
-
-  return { ok:true, candidates: candidates };
-}
-
 function handleRegister(body){
-  var name       = sanitizeString(body.name);
-  var campus     = sanitizeString(body.campus);
-  var gender     = sanitizeString(body.gender);
-  var country    = sanitizeString(body.country);
-  var background = sanitizeString(body.background);
-  if(!name || !campus || !country || !background){
-    return createError('Name, campus, country, and background are required.');
-  }
-  var interests = normalizeInterests(body.interests);
-  var hobbies   = normalizeHobbies(body.hobbies);
-  var teams     = sanitizeString(body.teams);
-  var photo     = sanitizeImageData(body.photoData || body.photo || body.avatar || '');
-
-  var ctx  = loadProfiles();
-  var code = generateJoinCode(ctx.map);
-  var profile = {
-    code: code, name: name, campus: campus, gender: gender, country: country,
-    background: background, interests: interests, hobbies: hobbies, teams: teams,
-    photo: photo,
-    timestamp: new Date()
-  };
-  appendProfile(profile, ctx);
-
-  return { ok:true, code: code, profile: extendProfileWithMatches(profile, []), matches: [] };
+  var table = loadProfiles();
+  var profile = buildProfilePayload(body, null, table.map);
+  appendProfile(profile, table);
+  return { ok: true, profile: cloneProfile(profile) };
 }
 
 function handleUpdate(body){
   var code = sanitizeCode(body.code);
-  if(!code) return createError('Missing join code');
+  if(!code) return createError('Missing code for update');
 
-  var ctx = loadProfiles();
-  var existing = ctx.map.get(code);
+  var table = loadProfiles();
+  var existing = table.map.get(code);
   if(!existing) return createError('Profile not found for code ' + code);
 
-  var name       = sanitizeString(body.name)       || existing.name;
-  var campus     = sanitizeString(body.campus)     || existing.campus;
-  var gender     = sanitizeString(body.gender);
-  var country    = sanitizeString(body.country)    || existing.country;
-  var background = sanitizeString(body.background) || existing.background;
-  var interests  = normalizeInterests(body.interests);
-  var hobbies    = normalizeHobbies(body.hobbies);
-  var teams      = sanitizeString(body.teams);
-  var photo      = sanitizeImageData(body.photoData || body.photo || body.avatar || '') || existing.photo || '';
+  var profile = buildProfilePayload(body, existing, table.map);
+  profile.row = existing.row;
+  updateProfile(profile, table);
+  return { ok: true, profile: cloneProfile(profile) };
+}
 
-  if(!name || !campus || !country || !background){
-    return createError('Name, campus, country, and background are required.');
+function handleResetData(body){
+  var token = sanitizeString(body.confirmToken);
+  if(token !== RESET_TOKEN){
+    return createError('Invalid confirm token. Set confirmToken to ERASE_ALL_2026.');
   }
 
-  var profile = {
-    code: code,
-    name: name,
-    campus: campus,
-    gender: gender || existing.gender || '',
-    country: country,
-    background: background,
-    interests: interests.length ? interests : (existing.interests || []),
-    hobbies: hobbies.length ? hobbies : (existing.hobbies || []),
-    teams: teams || existing.teams || '',
-    photo: photo,
-    timestamp: new Date(),
-    row: existing.row
+  var table = getTable(SHEET_NAME, PROFILE_HEADERS);
+  var header = table.header.length ? table.header : PROFILE_HEADERS.slice();
+  table.sheet.clearContents();
+  table.sheet.getRange(1,1,1,header.length).setValues([header]);
+  return { ok: true, message: 'All student profile data has been deleted.' };
+}
+
+function handleStudents(){
+  var table = loadProfiles();
+  var students = Array.from(table.map.values()).map(function(row){
+    return {
+      code: row.code,
+      name: row.name,
+      campus: row.campus,
+      homeCountry: row.homeCountry,
+      programme: row.programme,
+      notes: row.notes,
+      timestamp: row.timestamp
+    };
+  });
+  students.sort(function(a,b){ return b.timestamp - a.timestamp; });
+  return { ok: true, total: students.length, students: students };
+}
+
+function handleDashboardSummary(){
+  var table = loadProfiles();
+  var list = Array.from(table.map.values());
+
+  var campusCounts = countBy(list, function(p){ return p.campus; });
+  var countryCounts = countBy(list, function(p){ return p.homeCountry; });
+  var programmeCounts = countBy(list, function(p){ return p.programme; });
+
+  return {
+    ok: true,
+    totalStudents: list.length,
+    campuses: toCountArray(campusCounts),
+    countries: toCountArray(countryCounts),
+    programmes: toCountArray(programmeCounts)
   };
-
-  updateProfile(profile, ctx);
-
-  var matches = loadMatchesForCode(code, ctx);
-  return { ok:true, code: code, profile: extendProfileWithMatches(profile, matches), matches: matches };
 }
 
-function handleSwipe(body){
-  var code   = sanitizeCode(body.code);
-  var target = sanitizeCode(body.target);
-  var dir    = String(body.dir || '').toLowerCase();
-  if(!code || !target || !dir) return createError('Missing swipe payload');
-
-  var when = new Date();
-  recordSwipeEvent({ code: code, target: target, dir: dir, timestamp: when });
-
-  var out = { ok:true, matched:false };
-  if(dir === 'right'){
-    if(hasMutualSwipe(code, target)){
-      var profiles = loadProfiles();
-      var partnerProfile = profiles.map.get(target);
-      var partner = partnerProfile ? clonePartner(partnerProfile, true) : null;
-      recordMatchPair(code, target, when);
-      out.matched = true;
-      out.partner = partner;
-      out.matches = loadMatchesForCode(code, profiles);
-    }
-  }
-  return out;
-}
-
-/* ==========================
-   DATA ACCESS
-========================== */
 function loadProfiles(){
-  var table = getTable(SHEET_NAMES.PROFILES, DEFAULT_HEADERS.profiles);
+  var table = getTable(SHEET_NAME, PROFILE_HEADERS);
   var idx = {
-    code:       findColumnIndex(table, PROFILE_ALIASES.code),
-    name:       findColumnIndex(table, PROFILE_ALIASES.name),
-    campus:     findColumnIndex(table, PROFILE_ALIASES.campus),
-    gender:     findColumnIndex(table, PROFILE_ALIASES.gender),
-    country:    findColumnIndex(table, PROFILE_ALIASES.country),
-    background: findColumnIndex(table, PROFILE_ALIASES.background),
-    interests:  findColumnIndex(table, PROFILE_ALIASES.interests),
-    hobbies:    findColumnIndex(table, PROFILE_ALIASES.hobbies),
-    teams:      findColumnIndex(table, PROFILE_ALIASES.teams),
-    photo:      findColumnIndex(table, PROFILE_ALIASES.photo),
-    timestamp:  findColumnIndex(table, PROFILE_ALIASES.timestamp)
+    timestamp: findColumnIndex(table, PROFILE_ALIASES.timestamp),
+    code: findColumnIndex(table, PROFILE_ALIASES.code),
+    name: findColumnIndex(table, PROFILE_ALIASES.name),
+    campus: findColumnIndex(table, PROFILE_ALIASES.campus),
+    homeCountry: findColumnIndex(table, PROFILE_ALIASES.homeCountry),
+    programme: findColumnIndex(table, PROFILE_ALIASES.programme),
+    email: findColumnIndex(table, PROFILE_ALIASES.email),
+    notes: findColumnIndex(table, PROFILE_ALIASES.notes)
   };
-  if(idx.code === -1) throw new Error('Profiles sheet missing a code column');
 
-  var lastRow = table.sheet.getLastRow();
-  var lastCol = table.sheet.getLastColumn();
-  var values  = lastRow > 1 ? table.sheet.getRange(2,1,lastRow-1,lastCol).getValues() : [];
+  var rows = table.sheet.getLastRow();
+  var cols = table.sheet.getLastColumn();
+  var values = rows > 1 ? table.sheet.getRange(2, 1, rows - 1, cols).getValues() : [];
+
   var map = new Map();
-  for(var i=0; i<values.length; i++){
-    var row  = values[i];
-    var code = sanitizeCode(row[idx.code]);
+  for(var i = 0; i < values.length; i++){
+    var row = values[i];
+    var code = sanitizeCode(getValue(row, idx.code));
     if(!code) continue;
+
     map.set(code, {
+      row: i + 2,
+      timestamp: parseTimestamp(getValue(row, idx.timestamp)),
       code: code,
-      name:       idx.name       !== -1 ? sanitizeString(row[idx.name])       : '',
-      campus:     idx.campus     !== -1 ? sanitizeString(row[idx.campus])     : '',
-      gender:     idx.gender     !== -1 ? sanitizeString(row[idx.gender])     : '',
-      country:    idx.country    !== -1 ? sanitizeString(row[idx.country])    : '',
-      background: idx.background !== -1 ? sanitizeString(row[idx.background]) : '',
-      interests:  idx.interests  !== -1 ? normalizeInterests(row[idx.interests]) : [],
-      hobbies:    idx.hobbies    !== -1 ? normalizeHobbies(row[idx.hobbies])    : [],
-      teams:      idx.teams      !== -1 ? sanitizeString(row[idx.teams])      : '',
-      photo:      idx.photo      !== -1 ? sanitizeImageData(row[idx.photo])    : '',
-      timestamp:  idx.timestamp  !== -1 ? parseTimestamp(row[idx.timestamp])  : null,
-      row: i + 2
+      name: sanitizeString(getValue(row, idx.name)),
+      campus: sanitizeString(getValue(row, idx.campus)),
+      homeCountry: sanitizeString(getValue(row, idx.homeCountry)),
+      programme: sanitizeString(getValue(row, idx.programme)),
+      email: sanitizeString(getValue(row, idx.email)),
+      notes: sanitizeString(getValue(row, idx.notes))
     });
   }
-  return { map: map, table: table, indexes: idx };
+
+  return { table: table, indexes: idx, map: map };
 }
 
 function appendProfile(profile, ctx){
-  var t = ctx.table;
-  var row = new Array(t.header.length); for(var i=0;i<row.length;i++){ row[i]=''; }
-  if(ctx.indexes.timestamp !== -1){ row[ctx.indexes.timestamp] = profile.timestamp instanceof Date ? profile.timestamp : new Date(profile.timestamp||Date.now()); }
-  if(ctx.indexes.code      !== -1){ row[ctx.indexes.code]      = profile.code; }
-  if(ctx.indexes.name      !== -1){ row[ctx.indexes.name]      = profile.name; }
-  if(ctx.indexes.campus    !== -1){ row[ctx.indexes.campus]    = profile.campus; }
-  if(ctx.indexes.gender    !== -1){ row[ctx.indexes.gender]    = profile.gender || ''; }
-  if(ctx.indexes.country   !== -1){ row[ctx.indexes.country]   = profile.country; }
-  if(ctx.indexes.background!== -1){ row[ctx.indexes.background]= profile.background; }
-  if(ctx.indexes.interests !== -1){ row[ctx.indexes.interests] = profile.interests.join(', '); }
-  if(ctx.indexes.hobbies   !== -1){ row[ctx.indexes.hobbies]   = profile.hobbies.join(', '); }
-  if(ctx.indexes.teams     !== -1){ row[ctx.indexes.teams]     = profile.teams; }
-  if(ctx.indexes.photo     !== -1){ row[ctx.indexes.photo]     = profile.photo || ''; }
-  t.sheet.appendRow(row);
-  var savedRow = t.sheet.getLastRow();
-
-  ctx.map.set(profile.code, {
-    code: profile.code,
-    name: profile.name,
-    campus: profile.campus,
-    gender: profile.gender || '',
-    country: profile.country,
-    background: profile.background,
-    interests: profile.interests.slice(),
-    hobbies: profile.hobbies.slice(),
-    teams: profile.teams,
-    photo: profile.photo || '',
-    timestamp: profile.timestamp instanceof Date ? profile.timestamp.getTime() : profile.timestamp,
-    row: savedRow
-  });
+  var row = new Array(ctx.table.header.length);
+  for(var i=0;i<row.length;i++){ row[i] = ''; }
+  applyProfileToRow(row, profile, ctx.indexes);
+  ctx.table.sheet.appendRow(row);
 }
 
 function updateProfile(profile, ctx){
-  var t = ctx.table;
-  var rowIndex = profile.row;
-  if(!rowIndex || rowIndex < 2) throw new Error('Cannot update profile without row reference');
-  var current = t.sheet.getRange(rowIndex,1,1,t.header.length).getValues()[0];
-
-  if(ctx.indexes.timestamp !== -1){ current[ctx.indexes.timestamp] = profile.timestamp instanceof Date ? profile.timestamp : new Date(profile.timestamp||Date.now()); }
-  if(ctx.indexes.code      !== -1){ current[ctx.indexes.code]      = profile.code; }
-  if(ctx.indexes.name      !== -1){ current[ctx.indexes.name]      = profile.name; }
-  if(ctx.indexes.campus    !== -1){ current[ctx.indexes.campus]    = profile.campus; }
-  if(ctx.indexes.gender    !== -1){ current[ctx.indexes.gender]    = profile.gender || ''; }
-  if(ctx.indexes.country   !== -1){ current[ctx.indexes.country]   = profile.country; }
-  if(ctx.indexes.background!== -1){ current[ctx.indexes.background]= profile.background; }
-  if(ctx.indexes.interests !== -1){ current[ctx.indexes.interests] = Array.isArray(profile.interests) ? profile.interests.join(', ') : ''; }
-  if(ctx.indexes.hobbies   !== -1){ current[ctx.indexes.hobbies]   = Array.isArray(profile.hobbies) ? profile.hobbies.join(', ') : ''; }
-  if(ctx.indexes.teams     !== -1){ current[ctx.indexes.teams]     = profile.teams; }
-  if(ctx.indexes.photo     !== -1){ current[ctx.indexes.photo]     = profile.photo || ''; }
-
-  t.sheet.getRange(rowIndex,1,1,current.length).setValues([current]);
-
-  ctx.map.set(profile.code, {
-    code: profile.code,
-    name: profile.name,
-    campus: profile.campus,
-    gender: profile.gender || '',
-    country: profile.country,
-    background: profile.background,
-    interests: Array.isArray(profile.interests) ? profile.interests.slice() : [],
-    hobbies: Array.isArray(profile.hobbies) ? profile.hobbies.slice() : [],
-    teams: profile.teams,
-    photo: profile.photo || '',
-    timestamp: profile.timestamp instanceof Date ? profile.timestamp.getTime() : profile.timestamp,
-    row: rowIndex
-  });
+  var row = ctx.table.sheet.getRange(profile.row, 1, 1, ctx.table.header.length).getValues()[0];
+  applyProfileToRow(row, profile, ctx.indexes);
+  ctx.table.sheet.getRange(profile.row, 1, 1, row.length).setValues([row]);
 }
 
-function loadMatchesForCode(code, profiles){
-  var t = getTable(SHEET_NAMES.MATCHES, DEFAULT_HEADERS.matches);
-  var idx = {
-    codeA:     findColumnIndex(t, MATCH_ALIASES.codeA),
-    codeB:     findColumnIndex(t, MATCH_ALIASES.codeB),
-    timestamp: findColumnIndex(t, MATCH_ALIASES.timestamp)
+function applyProfileToRow(row, profile, idx){
+  setValue(row, idx.timestamp, new Date(profile.timestamp));
+  setValue(row, idx.code, profile.code);
+  setValue(row, idx.name, profile.name);
+  setValue(row, idx.campus, profile.campus);
+  setValue(row, idx.homeCountry, profile.homeCountry);
+  setValue(row, idx.programme, profile.programme);
+  setValue(row, idx.email, profile.email);
+  setValue(row, idx.notes, profile.notes);
+}
+
+function buildProfilePayload(body, existing, existingMap){
+  var inputCode = sanitizeCode(body.code);
+  var code = inputCode || (existing ? existing.code : generateCode(existingMap));
+  if(!code) throw new Error('Could not generate student code');
+
+  var profile = {
+    timestamp: Date.now(),
+    code: code,
+    name: sanitizeString(body.name) || (existing ? existing.name : ''),
+    campus: sanitizeString(body.campus) || (existing ? existing.campus : ''),
+    homeCountry: sanitizeString(body.homeCountry || body.country) || (existing ? existing.homeCountry : ''),
+    programme: sanitizeString(body.programme || body.background) || (existing ? existing.programme : ''),
+    email: sanitizeString(body.email || body.contact) || (existing ? existing.email : ''),
+    notes: sanitizeString(body.notes) || (existing ? existing.notes : '')
   };
-  if(idx.codeA === -1 || idx.codeB === -1) throw new Error('Matches sheet missing code columns');
 
-  var lastRow = t.sheet.getLastRow();
-  var lastCol = t.sheet.getLastColumn();
-  var values  = lastRow > 1 ? t.sheet.getRange(2,1,lastRow-1,lastCol).getValues() : [];
-  var pairs = new Map();
-
-  for(var i=0;i<values.length;i++){
-    var row   = values[i];
-    var a     = sanitizeCode(row[idx.codeA]);
-    var b     = sanitizeCode(row[idx.codeB]);
-    if(!a || !b) continue;
-
-    var partnerCode;
-    if(a === code)      partnerCode = b;
-    else if(b === code) partnerCode = a;
-    else continue;
-
-    var partnerProfile = profiles.map.get(partnerCode);
-    if(!partnerProfile) continue;
-
-    var ts = parseTimestamp(idx.timestamp !== -1 ? row[idx.timestamp] : null);
-    var key = makePairKey(code, partnerCode);
-    var existing = pairs.get(key);
-    if(!existing || existing.ts < ts){
-      pairs.set(key, { ts: ts, partner: clonePartner(partnerProfile, true) });
-    }
+  if(!profile.name || !profile.campus || !profile.homeCountry || !profile.programme || !profile.email){
+    throw new Error('name, campus, homeCountry, programme, and email are required');
   }
-
-  var out = Array.from(pairs.values());
-  out.sort(function(x,y){ return y.ts - x.ts; });
-  return out;
+  return profile;
 }
 
-function recordMatchPair(code, target, when){
-  var t = getTable(SHEET_NAMES.MATCHES, DEFAULT_HEADERS.matches);
-  var idx = {
-    codeA:     findColumnIndex(t, MATCH_ALIASES.codeA),
-    codeB:     findColumnIndex(t, MATCH_ALIASES.codeB),
-    timestamp: findColumnIndex(t, MATCH_ALIASES.timestamp)
-  };
-  if(idx.codeA === -1 || idx.codeB === -1) throw new Error('Matches sheet missing code columns');
-
-  var existing = collectExistingPairs(t, idx);
-  var key = makePairKey(code, target);
-  if(existing.has(key)) return;
-
-  var ts = when instanceof Date ? when : new Date(when || Date.now());
-  var row = new Array(t.header.length); for(var i=0;i<row.length;i++){ row[i]=''; }
-  if(idx.timestamp !== -1) row[idx.timestamp] = ts;
-  if(idx.codeA     !== -1) row[idx.codeA]     = code;
-  if(idx.codeB     !== -1) row[idx.codeB]     = target;
-  t.sheet.appendRow(row);
-}
-
-function collectExistingPairs(t, idx){
-  var set = new Set();
-  var lastRow = t.sheet.getLastRow();
-  if(lastRow <= 1) return set;
-  var lastCol = t.sheet.getLastColumn();
-  var values  = t.sheet.getRange(2,1,lastRow-1,lastCol).getValues();
-  for(var i=0;i<values.length;i++){
-    var row = values[i];
-    var a   = sanitizeCode(row[idx.codeA]);
-    var b   = sanitizeCode(row[idx.codeB]);
-    if(a && b) set.add(makePairKey(a,b));
+function generateCode(existingMap){
+  var chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  for(var t=0;t<1000;t++){
+    var code = '';
+    for(var i=0;i<6;i++) code += chars.charAt(Math.floor(Math.random() * chars.length));
+    if(!existingMap.has(code)) return code;
   }
-  return set;
+  return '';
 }
 
-function recordSwipeEvent(entry){
-  var t = getTable(SHEET_NAMES.SWIPES, DEFAULT_HEADERS.swipes);
-  var idx = {
-    swiper:    findColumnIndex(t, SWIPE_ALIASES.swiper),
-    target:    findColumnIndex(t, SWIPE_ALIASES.target),
-    dir:       findColumnIndex(t, SWIPE_ALIASES.dir),
-    timestamp: findColumnIndex(t, SWIPE_ALIASES.timestamp)
-  };
-  if(idx.swiper === -1 || idx.target === -1) throw new Error('Swipes sheet missing swiper/target columns');
-
-  var row = new Array(t.header.length); for(var i=0;i<row.length;i++){ row[i]=''; }
-  if(idx.timestamp !== -1) row[idx.timestamp] = entry.timestamp instanceof Date ? entry.timestamp : new Date(entry.timestamp||Date.now());
-  if(idx.swiper    !== -1) row[idx.swiper]    = entry.code;
-  if(idx.target    !== -1) row[idx.target]    = entry.target;
-  if(idx.dir       !== -1) row[idx.dir]       = entry.dir;
-  t.sheet.appendRow(row);
-}
-
-/* ==========================
-   RELATIONS / FILTERS
-========================== */
-function hasMutualSwipe(code, target){
-  var t = getTable(SHEET_NAMES.SWIPES, DEFAULT_HEADERS.swipes);
-  var idx = {
-    swiper: findColumnIndex(t, SWIPE_ALIASES.swiper),
-    target: findColumnIndex(t, SWIPE_ALIASES.target),
-    dir:    findColumnIndex(t, SWIPE_ALIASES.dir)
-  };
-  if(idx.swiper === -1 || idx.target === -1 || idx.dir === -1) return false;
-
-  var lastRow = t.sheet.getLastRow();
-  if(lastRow <= 1) return false;
-
-  var lastCol = t.sheet.getLastColumn();
-  var values  = t.sheet.getRange(2,1,lastRow-1,lastCol).getValues();
-  var wantSwiper = sanitizeCode(target);
-  var wantTarget = sanitizeCode(code);
-  for(var i=0;i<values.length;i++){
-    var row = values[i];
-    var swiper = sanitizeCode(row[idx.swiper]);
-    var cand   = sanitizeCode(row[idx.target]);
-    var dir    = String(row[idx.dir] || '').toLowerCase();
-    if(swiper === wantSwiper && cand === wantTarget && dir === 'right') return true;
-  }
-  return false;
-}
-
-/** Returns:
- *  { swipedTargets:Set<code>, matchedPartners:Set<code> }
- */
-function getUserRelations(code, profiles){
-  var swipedTargets = new Set();
-  var st = getTable(SHEET_NAMES.SWIPES, DEFAULT_HEADERS.swipes);
-  var sIdx = {
-    swiper: findColumnIndex(st, SWIPE_ALIASES.swiper),
-    target: findColumnIndex(st, SWIPE_ALIASES.target)
-  };
-  if(sIdx.swiper !== -1 && sIdx.target !== -1){
-    var lastRow = st.sheet.getLastRow();
-    if(lastRow > 1){
-      var lastCol = st.sheet.getLastColumn();
-      var values  = st.sheet.getRange(2,1,lastRow-1,lastCol).getValues();
-      for(var i=0;i<values.length;i++){
-        var row = values[i];
-        var swiper = sanitizeCode(row[sIdx.swiper]);
-        var target = sanitizeCode(row[sIdx.target]);
-        if(swiper === code && target){ swipedTargets.add(target); }
-      }
-    }
-  }
-
-  var matchedPartners = new Set();
-  var matches = loadMatchesForCode(code, profiles);
-  for(var j=0;j<matches.length;j++){
-    var p = matches[j].partner;
-    var partnerCode = (p && p.code) ? sanitizeCode(p.code) : null;
-    if(partnerCode) matchedPartners.add(partnerCode);
-  }
-  return { swipedTargets: swipedTargets, matchedPartners: matchedPartners };
-}
-
-/* ==========================
-   DTOs / UTILS
-========================== */
-function extendProfileWithMatches(p, matches){
-  var out = {
+function cloneProfile(p){
+  return {
+    timestamp: p.timestamp,
     code: p.code,
     name: p.name,
     campus: p.campus,
-    gender: p.gender,
-    country: p.country,
-    background: p.background,
-    interests: Array.isArray(p.interests) ? p.interests.slice() : [],
-    hobbies: Array.isArray(p.hobbies) ? p.hobbies.slice() : [],
-    teams: p.teams || '',
-    photo: p.photo || ''
-  };
-  if(p.timestamp){
-    out.timestamp = (typeof p.timestamp === 'number') ? p.timestamp : parseTimestamp(p.timestamp);
-  }
-  out.matches = Array.isArray(matches) ? matches.slice() : [];
-  return out;
-}
-
-function clonePartner(p, includeCode){
-  return {
-    code: includeCode ? (p.code || '') : undefined,
-    name: p.name || '',
-    campus: p.campus || '',
-    gender: p.gender || '',
-    country: p.country || '',
-    background: p.background || '',
-    interests: Array.isArray(p.interests) ? p.interests.slice() : [],
-    hobbies: Array.isArray(p.hobbies) ? p.hobbies.slice() : [],
-    teams: p.teams || '',
-    photo: p.photo || ''
+    homeCountry: p.homeCountry,
+    programme: p.programme,
+    email: p.email,
+    notes: p.notes
   };
 }
 
-function generateJoinCode(existingMap){
-  var alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  for(var tries=0; tries<1000; tries++){
-    var c = '';
-    for(var i=0;i<6;i++){ c += alphabet.charAt(Math.floor(Math.random()*alphabet.length)); }
-    if(!existingMap.has(c)) return c;
+function countBy(list, selector){
+  var map = new Map();
+  for(var i=0;i<list.length;i++){
+    var key = sanitizeString(selector(list[i]));
+    if(!key) continue;
+    map.set(key, (map.get(key) || 0) + 1);
   }
-  throw new Error('Unable to generate unique join code');
+  return map;
 }
 
-function getTable(name, defaultHeader){
+function toCountArray(map){
+  return Array.from(map.entries())
+    .map(function(entry){ return { name: entry[0], count: entry[1] }; })
+    .sort(function(a,b){
+      if(b.count !== a.count) return b.count - a.count;
+      return a.name < b.name ? -1 : (a.name > b.name ? 1 : 0);
+    });
+}
+
+function getTable(name, defaultHeaders){
   var ss = getSpreadsheet();
-  var sheet = ss.getSheetByName(name);
-  if(!sheet){
-    var sheets = ss.getSheets();
-    var lower = name.toLowerCase();
-    for(var i=0;i<sheets.length;i++){
-      var cand = sheets[i];
-      if(cand.getName().toLowerCase() === lower){ sheet = cand; break; }
+  var sheet = ss.getSheetByName(name) || ss.insertSheet(name);
+
+  if(sheet.getLastRow() === 0){
+    sheet.getRange(1,1,1,defaultHeaders.length).setValues([defaultHeaders]);
+  }
+
+  var colCount = sheet.getLastColumn();
+  var header = colCount > 0 ? sheet.getRange(1,1,1,colCount).getValues()[0] : [];
+  var headerMap = buildHeaderMap(header);
+
+  for(var i=0;i<defaultHeaders.length;i++){
+    var key = normalizeKey(defaultHeaders[i]);
+    if(headerMap[key] === undefined){
+      header.push(defaultHeaders[i]);
+      headerMap[key] = header.length - 1;
     }
   }
-  if(!sheet) sheet = ss.insertSheet(name);
-  if(sheet.getLastRow() === 0 && defaultHeader && defaultHeader.length){
-    sheet.getRange(1,1,1,defaultHeader.length).setValues([defaultHeader]);
+
+  if(header.length > colCount){
+    sheet.getRange(1,1,1,header.length).setValues([header]);
   }
-  var lastCol = sheet.getLastColumn();
-  if(lastCol === 0 && defaultHeader && defaultHeader.length) lastCol = defaultHeader.length;
-  var header = lastCol > 0 ? sheet.getRange(1,1,1,lastCol).getValues()[0] : [];
-  var map = buildHeaderIndex(header);
-  if(defaultHeader && defaultHeader.length){
-    var missing = [];
-    for(var i=0;i<defaultHeader.length;i++){
-      var key = normalizeKey(defaultHeader[i]);
-      if(key && map[key] === undefined){ missing.push(defaultHeader[i]); }
-    }
-    if(missing.length){
-      sheet.getRange(1, header.length+1, 1, missing.length).setValues([missing]);
-      for(var j=0;j<missing.length;j++){
-        var colName = missing[j];
-        header.push(colName);
-        var mk = normalizeKey(colName);
-        if(mk && map[mk] === undefined){ map[mk] = header.length - 1; }
-      }
-    }
-  }
-  return { sheet: sheet, header: header, map: map };
+
+  return { sheet: sheet, header: header, map: headerMap };
 }
 
-function buildHeaderIndex(header){
+function buildHeaderMap(header){
   var map = {};
   for(var i=0;i<header.length;i++){
     var key = normalizeKey(header[i]);
@@ -626,102 +283,62 @@ function buildHeaderIndex(header){
 }
 
 function findColumnIndex(table, aliases){
-  if(!aliases || !aliases.length) return -1;
   for(var i=0;i<aliases.length;i++){
     var key = normalizeKey(aliases[i]);
-    if(key && table.map.hasOwnProperty(key)) return table.map[key];
+    if(key && table.map[key] !== undefined) return table.map[key];
   }
   return -1;
 }
 
-function normalizeKey(v){
-  if(v === null || v === undefined) return '';
-  return String(v).toLowerCase().replace(/[^a-z0-9]+/g,'');
-}
-
-function sanitizeCode(v){
-  var s = sanitizeString(v);
-  return s ? s.toUpperCase() : '';
-}
-
-function sanitizeString(v){
-  if(v === null || v === undefined) return '';
-  if(v instanceof Date){
-    return Utilities.formatDate(v, Session.getScriptTimeZone(), "yyyy-MM-dd'T'HH:mm:ssXXX");
-  }
-  return String(v).trim();
-}
-
-function sanitizeImageData(v){
-  var s = sanitizeString(v);
-  if(!s) return '';
-  var trimmed = s.trim();
-  var match = trimmed.match(/^data:image\/(png|jpe?g|webp);base64,/i);
-  if(!match) return '';
-  var maxLength = 220000; // ~160KB payload after base64
-  if(trimmed.length > maxLength) return '';
-  var prefix = match[0];
-  var payload = trimmed.substring(prefix.length).replace(/\s+/g, '');
-  if(/[^A-Za-z0-9+/=]/.test(payload)) return '';
-  return prefix + payload;
-}
-
-function normalizeInterests(v){
-  if(Array.isArray(v)){
-    return v.map(function(x){ return sanitizeString(x); }).filter(function(x){ return x.length; });
-  }
-  var s = sanitizeString(v);
-  if(!s) return [];
-  return s.split(/[,;|]/).map(function(x){ return x.trim(); }).filter(function(x){ return x.length; });
-}
-
-function parseTimestamp(v){
-  if(v instanceof Date) return v.getTime();
-  if(typeof v === 'number' && !isNaN(v)){
-    if(v > 1e12) return Math.round(v);
-    if(v > 1e9)  return Math.round(v*1000);
-    return Math.round(EXCEL_EPOCH + v * MS_PER_DAY);
-  }
-  var s = sanitizeString(v);
-  if(!s) return Date.now();
-  var t = Date.parse(s);
-  return isNaN(t) ? Date.now() : t;
+function normalizeKey(value){
+  return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
 }
 
 function parseBody(e){
   if(!e || !e.postData || !e.postData.contents) return {};
-  try { return JSON.parse(e.postData.contents); }
-  catch(_e){ throw new Error('Invalid JSON payload'); }
+  return JSON.parse(e.postData.contents);
 }
 
 function respondJson(payload){
-  var out = ContentService.createTextOutput(JSON.stringify(payload))
-                          .setMimeType(ContentService.MimeType.JSON);
-  // These headers help prevent caching; not required for CORS when using "simple" requests.
-  if(out.setHeader){
-    out.setHeader('Cache-Control','no-store, no-cache, must-revalidate, max-age=0')
-       .setHeader('Pragma','no-cache')
-       .setHeader('Expires','0');
-  }
-  return out;
+  return ContentService.createTextOutput(JSON.stringify(payload)).setMimeType(ContentService.MimeType.JSON);
 }
 
 function createError(err){
-  var msg = err && err.message ? err.message : String(err);
-  return { ok:false, error: msg };
+  return { ok: false, error: (err && err.message) ? err.message : String(err) };
 }
 
-function makePairKey(a,b){
-  var x = sanitizeCode(a), y = sanitizeCode(b);
-  return x < y ? (x+'|'+y) : (y+'|'+x);
+function sanitizeString(value){
+  if(value === null || value === undefined) return '';
+  return String(value).trim();
+}
+
+function sanitizeCode(value){
+  return sanitizeString(value).toUpperCase();
+}
+
+function parseTimestamp(value){
+  if(value instanceof Date) return value.getTime();
+  if(typeof value === 'number' && !isNaN(value)) return value;
+  var text = sanitizeString(value);
+  if(!text) return Date.now();
+  var parsed = Date.parse(text);
+  return isNaN(parsed) ? Date.now() : parsed;
+}
+
+function getValue(row, index){
+  return index >= 0 ? row[index] : '';
+}
+
+function setValue(row, index, value){
+  if(index >= 0) row[index] = value;
 }
 
 function getSpreadsheet(){
   var props = PropertiesService.getScriptProperties();
-  var id = props.getProperty('SPREADSHEET_ID');
-  if(id){
-    try { return SpreadsheetApp.openById(id); }
-    catch(_e){ /* fall back to active */ }
+  var spreadsheetId = props.getProperty('SPREADSHEET_ID');
+  if(spreadsheetId){
+    try { return SpreadsheetApp.openById(spreadsheetId); }
+    catch(_ignored){}
   }
   return SpreadsheetApp.getActive();
 }
