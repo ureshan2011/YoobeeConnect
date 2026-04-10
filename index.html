@@ -2,2019 +2,343 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Yoobee Connect</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsvectormap@1.5.3/dist/css/jsvectormap.min.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Yoobee Connect · Student Insights</title>
   <style>
     :root {
-      --bg: #f5f5f7;
+      --bg: #f4f7ff;
       --surface: #ffffff;
-      --surface-soft: rgba(0, 0, 0, 0.03);
-      --border: rgba(0, 0, 0, 0.08);
-      --border-strong: rgba(0, 0, 0, 0.12);
-      --text: #1d1d1f;
-      --sub: #6e6e73;
-      --accent: #0a84ff;
-      --accent-soft: rgba(10, 132, 255, 0.12);
-      --radius-lg: 22px;
-      --shadow-lg: 0 20px 50px rgba(15, 23, 42, 0.08), 0 10px 30px rgba(15, 23, 42, 0.05);
-      --shadow-soft: 0 12px 26px rgba(15, 23, 42, 0.06);
+      --surface-soft: #f7f9ff;
+      --border: rgba(15, 23, 42, 0.1);
+      --text: #0f172a;
+      --muted: #64748b;
+      --accent: #2563eb;
+      --accent-2: #7c3aed;
+      --ok: #059669;
+      --radius: 20px;
+      --shadow: 0 20px 40px rgba(30, 41, 59, 0.08);
+      --font: Inter, "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
     body {
       margin: 0;
-      background: radial-gradient(circle at top right, rgba(10, 132, 255, 0.08), transparent 55%),
-                  radial-gradient(circle at bottom left, rgba(52, 199, 89, 0.06), transparent 60%),
-                  var(--bg);
+      font: 15px/1.5 var(--font);
       color: var(--text);
-      font: 16px/1.5 "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       min-height: 100vh;
+      background:
+        radial-gradient(circle at top right, rgba(37, 99, 235, 0.15), transparent 38%),
+        radial-gradient(circle at bottom left, rgba(124, 58, 237, 0.12), transparent 35%),
+        var(--bg);
     }
-    .wrap {
-      max-width: 1120px;
+    .shell {
+      max-width: 1240px;
       margin: 0 auto;
-      padding: 48px 24px 72px;
+      padding: 32px 18px 56px;
       display: grid;
-      gap: 28px;
-    }
-    h1,
-    h2 {
-      margin: 0;
-    }
-    h1 {
-      font-size: clamp(26px, 3vw, 32px);
-      font-weight: 700;
-      letter-spacing: -0.4px;
-    }
-    h2 {
-      font-size: 18px;
-      color: var(--sub);
-      font-weight: 500;
-    }
-    .grid {
-      display: grid;
-      gap: 28px;
-    }
-    @media (min-width: 960px) {
-      .grid {
-        grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
-        align-items: start;
-      }
-    }
-    .card {
-      background: var(--surface);
-      border-radius: var(--radius-lg);
-      padding: 28px;
-      border: 1px solid var(--border);
-      box-shadow: var(--shadow-lg);
-      backdrop-filter: blur(6px);
-    }
-    label {
-      display: block;
-      font-size: 13px;
-      color: var(--sub);
-      margin-bottom: 6px;
-      font-weight: 500;
-      letter-spacing: 0.2px;
-    }
-    input,
-    textarea,
-    select {
-      width: 100%;
-      background: var(--surface-soft);
-      border: 1px solid var(--border);
-      color: var(--text);
-      padding: 12px 14px;
-      border-radius: 14px;
-      outline: none;
-      font: inherit;
-      transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
-    }
-    input:focus,
-    textarea:focus,
-    select:focus {
-      border-color: var(--accent);
-      background: #ffffff;
-      box-shadow: 0 0 0 4px var(--accent-soft);
-    }
-    textarea {
-      min-height: 96px;
-      resize: vertical;
-    }
-    .row {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 16px;
-    }
-    .photo-field {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: flex-start;
-      gap: 16px;
-    }
-    .photo-controls {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-    .photo-preview {
-      width: 96px;
-      height: 96px;
-      border-radius: 18px;
-      object-fit: cover;
-      border: 1px solid var(--border);
-      box-shadow: var(--shadow-soft);
-      background: var(--surface-soft);
-    }
-    .photo-status.error {
-      color: #d12c2c;
-    }
-    .candidate-photo {
-      width: 100%;
-      max-width: 180px;
-      border-radius: 20px;
-      object-fit: cover;
-      border: 1px solid var(--border);
-      box-shadow: var(--shadow-soft);
-      margin: 0 auto 16px;
-      display: block;
-      background: var(--surface-soft);
-    }
-    .btn {
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      border-radius: 14px;
-      border: 1px solid transparent;
-      padding: 12px 16px;
-      font-weight: 600;
-      transition: transform 0.16s ease, box-shadow 0.2s ease, background 0.2s ease;
-      font: inherit;
-    }
-    .btn.acc {
-      background: linear-gradient(135deg, #0a84ff, #1b95ff);
-      color: #ffffff;
-      box-shadow: var(--shadow-soft);
-    }
-    .btn.acc:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 18px 32px rgba(10, 132, 255, 0.25);
-    }
-    .btn.ghost {
-      background: var(--surface-soft);
-      border-color: var(--border);
-      color: var(--text);
-    }
-    .btn.ghost:hover {
-      background: rgba(0, 0, 0, 0.06);
-    }
-    .btn:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-      box-shadow: none;
-      transform: none;
-    }
-    .center {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-    }
-    .stack {
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
-    }
-    .pill {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-    .tag {
-      font-size: 13px;
-      background: var(--accent-soft);
-      border: 1px solid rgba(10, 132, 255, 0.24);
-      padding: 6px 12px;
-      border-radius: 999px;
-      color: var(--accent);
-      font-weight: 500;
-    }
-    .muted {
-      color: var(--sub);
-    }
-    .spacer {
-      height: 6px;
-    }
-    hr {
-      border: none;
-      height: 1px;
-      background: rgba(0, 0, 0, 0.08);
-      margin: 18px 0;
-    }
-    #status {
-      font-size: 13px;
-      color: var(--sub);
-    }
-    .swipe-card {
-      border: 1px solid var(--border);
-      border-radius: 18px;
-      padding: 22px;
-      background: linear-gradient(135deg, rgba(10, 132, 255, 0.05), rgba(52, 199, 89, 0.05));
-    }
-    .map-panel {
-      margin-top: 24px;
-      border: 1px solid var(--border);
-      border-radius: 18px;
-      padding: 20px;
-      background: var(--surface);
-      box-shadow: var(--shadow-soft);
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-    .map-panel-header {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-    }
-    .map-panel-header h3 {
-      margin: 0;
-      font-size: 16px;
-      font-weight: 600;
-      letter-spacing: -0.2px;
-    }
-    .background-list {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-    .background-item {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-    .background-item-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 14px;
-      font-weight: 600;
-    }
-    .background-bar-track {
-      height: 10px;
-      border-radius: 999px;
-      background: rgba(10, 132, 255, 0.12);
-      overflow: hidden;
-    }
-    .background-bar-fill {
-      height: 100%;
-      border-radius: 999px;
-      background: linear-gradient(90deg, rgba(10, 132, 255, 0.85), rgba(0, 122, 255, 0.85));
-    }
-    .background-variants {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      font-size: 12px;
-      color: var(--sub);
-    }
-    .background-variant {
-      display: inline-flex;
-      align-items: center;
-      padding: 3px 8px;
-      border-radius: 999px;
-      background: rgba(10, 132, 255, 0.1);
-      border: 1px solid rgba(10, 132, 255, 0.18);
-      color: var(--accent);
-      font-weight: 500;
-    }
-    .background-variants-more {
-      font-size: 12px;
-      color: var(--sub);
-    }
-    #country-map {
-      width: 100%;
-      height: clamp(220px, 40vh, 360px);
-      min-height: 220px;
-      border-radius: 16px;
-      overflow: hidden;
-    }
-    .who {
-      font-size: 20px;
-      font-weight: 600;
-      letter-spacing: -0.2px;
-    }
-    .actions {
-      display: flex;
-      gap: 12px;
-      justify-content: space-between;
-      flex-wrap: wrap;
-    }
-    .actions .btn {
-      flex: 1 1 140px;
-      min-width: 120px;
-    }
-    .col {
-      display: flex;
-      flex-direction: column;
       gap: 18px;
     }
-    .matches {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-    .matches .item {
-      padding: 14px 16px;
-      border: 1px solid var(--border);
-      border-radius: 16px;
+    .panel {
       background: var(--surface);
-      box-shadow: 0 8px 18px rgba(15, 23, 42, 0.04);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: clamp(18px, 2vw, 26px);
     }
-    .match-item {
+    .hero {
       display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 14px;
+    }
+    h1 { margin: 0; font-size: clamp(24px, 3vw, 34px); letter-spacing: -0.02em; }
+    h2 { margin: 0; font-size: 18px; }
+    .muted { color: var(--muted); }
+    .grid {
+      display: grid;
+      gap: 18px;
+      grid-template-columns: 1fr;
+    }
+    @media (min-width: 980px){
+      .grid { grid-template-columns: minmax(320px, 1fr) minmax(0, 1.4fr); }
+    }
+    .form-grid {
+      display: grid;
       gap: 12px;
-      align-items: flex-start;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
     }
-    .match-body {
-      flex: 1;
-    }
-    .match-photo {
-      width: 64px;
-      height: 64px;
-      border-radius: 18px;
-      object-fit: cover;
+    label { display:block; font-size: 12px; color: var(--muted); margin: 0 0 6px; font-weight: 600; }
+    input, select, textarea {
+      width: 100%;
       border: 1px solid var(--border);
       background: var(--surface-soft);
-      box-shadow: 0 6px 14px rgba(15, 23, 42, 0.08);
-      flex-shrink: 0;
+      border-radius: 12px;
+      padding: 10px 12px;
+      font: inherit;
+      color: var(--text);
+      outline: none;
+      transition: 160ms ease;
     }
-    .match-photo.placeholder {
-      display: flex;
-      align-items: center;
-      justify-content: center;
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+      background: #fff;
+    }
+    textarea { min-height: 78px; resize: vertical; }
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    button {
+      border: 1px solid transparent;
+      border-radius: 12px;
+      padding: 10px 16px;
+      font: inherit;
       font-weight: 600;
-      color: var(--sub);
+      cursor: pointer;
+      transition: 160ms ease;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      color: #fff;
+      box-shadow: 0 10px 24px rgba(37, 99, 235, 0.26);
+    }
+    .btn-secondary {
+      border-color: var(--border);
       background: var(--surface-soft);
+      color: var(--text);
     }
-    .small {
-      font-size: 12px;
+    button:hover { transform: translateY(-1px); }
+    button:disabled { opacity: .6; cursor: not-allowed; transform: none; }
+    .status { font-size: 13px; margin-top: 8px; min-height: 20px; }
+    .stats { display:grid; gap: 10px; grid-template-columns: repeat(auto-fit,minmax(120px,1fr)); }
+    .stat {
+      border: 1px solid var(--border);
+      background: var(--surface-soft);
+      border-radius: 16px;
+      padding: 12px;
     }
-    .right {
-      float: right;
-    }
-    .hidden {
-      display: none !important;
-    }
-
-    .credits {
-      text-align: center;
-      padding: 24px;
-      font-size: 13px;
-      color: var(--sub);
-    }
-
-    .credits a {
-      color: var(--accent);
-      font-weight: 600;
-      text-decoration: none;
-    }
-
-    .credits a:hover {
-      text-decoration: underline;
-    }
-
-    @media (max-width: 720px) {
-      body {
-        background: var(--bg);
-      }
-      .wrap {
-        padding: 32px 18px 56px;
-      }
-      .card {
-        padding: 24px;
-        border-radius: 18px;
-      }
-      #country-map {
-        height: clamp(200px, 45vh, 300px);
-      }
-      .actions {
-        gap: 10px;
-      }
-      .actions .btn {
-        flex: 1 1 100px;
-      }
-      .row {
-        grid-template-columns: 1fr;
-      }
-    }
+    .value { font-size: 24px; font-weight: 700; letter-spacing: -0.02em; }
+    .chart { width: 100%; height: clamp(240px, 34vh, 380px); }
+    .split { display:grid; gap: 12px; grid-template-columns: 1fr; }
+    @media (min-width: 780px){ .split { grid-template-columns: 1fr 1fr; } }
+    footer { text-align:center; color: var(--muted); font-size: 12px; }
   </style>
 </head>
 <body>
-  <div class="wrap grid">
-    <!-- LEFT: Profile / Swipe -->
-    <div class="stack">
-      <div class="card" id="screen-profile">
-        <h1>Yoobee Connect</h1>
-        <h2 id="profile-subtitle">Create your profile (one-time)</h2>
-        <div class="spacer"></div>
-        <div class="row">
-          <div>
-            <label>Name</label>
-            <input id="name" placeholder="e.g., Kauri H. (A7)" required />
-          </div>
-          <div>
-            <label>Campus</label>
-            <select id="campus" required>
-              <option value="">Select campus…</option>
-              <option>Auckland1</option>
-              <option>Auckland2</option>
-              <option>Auckland3</option>
-              <option>Christchurch</option>
-            </select>
-          </div>
-          <div>
-            <label>Gender</label>
-            <select id="gender" required>
-              <option value="">Select gender…</option>
-              <option>Female</option>
-              <option>Male</option>
-              <option>Non-binary</option>
-              <option>Prefer not to say</option>
-              <option>Other</option>
-            </select>
-          </div>
-        </div>
-        <div class="row">
-          <div>
-            <label>Country</label>
-            <select id="country" required><option value="">Select country…</option></select>
-          </div>
-          <div>
-            <label>Background</label>
-            <input id="background" placeholder="e.g., Computer Science" required />
-          </div>
-        </div>
-        <div>
-          <label>Interests (comma separated)</label>
-          <textarea id="interests" placeholder="e.g., AI, Robotics, Cloud" required></textarea>
-        </div>
-        <div>
-          <label>Hobbies (comma separated)</label>
-          <textarea id="hobbies" placeholder="e.g., Trail running, Indie films" required></textarea>
-        </div>
-        <div>
-          <label>Contact email</label>
-          <input id="contact" type="email" placeholder="yourname@yoobee.ac.nz" autocomplete="email" required />
-        </div>
-        <div>
-          <label>Profile photo</label>
-          <div class="photo-field">
-            <img id="photo-preview" class="photo-preview hidden" alt="Profile preview" />
-            <div class="photo-controls">
-              <input id="photo" type="file" accept="image/*" />
-              <div id="photo-status" class="small muted photo-status"></div>
-              <div class="small muted">We compress your image (max 512px, ~150 KB) before saving it.</div>
+  <div class="shell">
+    <div class="panel hero">
+      <div>
+        <h1>Yoobee Connect · Student Data Hub</h1>
+        <div class="muted">Collect student profile data and show live public insights across campuses.</div>
+      </div>
+      <div class="muted" id="lastRefresh">Last refresh: —</div>
+    </div>
+
+    <div class="grid">
+      <section class="panel">
+        <h2>Register / Update Student</h2>
+        <p class="muted">Swipe and matching are removed. This app now focuses on enrolment analytics.</p>
+        <form id="studentForm">
+          <div class="form-grid">
+            <div>
+              <label for="name">Full name</label>
+              <input id="name" required placeholder="e.g. Hana T." />
+            </div>
+            <div>
+              <label for="campus">Campus</label>
+              <select id="campus" required>
+                <option value="">Select campus</option>
+                <option>Auckland1</option>
+                <option>Auckland2</option>
+                <option>Auckland3</option>
+                <option>Christchurch</option>
+                <option>Wellington</option>
+                <option>Online</option>
+              </select>
+            </div>
+            <div>
+              <label for="homeCountry">Home country</label>
+              <input id="homeCountry" required placeholder="e.g. India" />
+            </div>
+            <div>
+              <label for="programme">Programme / Background</label>
+              <input id="programme" required placeholder="e.g. Information Technology" />
+            </div>
+            <div>
+              <label for="email">Contact email</label>
+              <input id="email" type="email" required placeholder="name@yoobee.ac.nz" />
+            </div>
+            <div>
+              <label for="studentCode">Student ID (optional)</label>
+              <input id="studentCode" placeholder="Leave blank to auto-generate" />
             </div>
           </div>
-        </div>
-        <div class="row">
-          <button class="btn acc" id="btn-register">Save & Start</button>
-          <button class="btn ghost" id="btn-restore">I already have a code</button>
-        </div>
-        <div id="status" class="spacer"></div>
-      </div>
+          <div style="margin-top:12px">
+            <label for="notes">Notes (optional)</label>
+            <textarea id="notes" placeholder="Extra details or support notes"></textarea>
+          </div>
+          <div class="actions" style="margin-top:14px">
+            <button class="btn-primary" id="saveBtn" type="submit">Save student</button>
+            <button class="btn-secondary" id="reloadBtn" type="button">Refresh dashboard</button>
+          </div>
+          <div id="status" class="status muted"></div>
+        </form>
+      </section>
 
-      <div class="card hidden" id="screen-swipe">
-        <div>
-          <b>Welcome, <span id="me-name">—</span></b>
-          <span class="small muted right">Code: <span id="me-code">—</span></span>
+      <section class="panel">
+        <h2>Public Dashboard</h2>
+        <div class="stats" style="margin:12px 0 14px">
+          <div class="stat"><div class="muted">Students</div><div id="totalStudents" class="value">0</div></div>
+          <div class="stat"><div class="muted">Campuses</div><div id="totalCampuses" class="value">0</div></div>
+          <div class="stat"><div class="muted">Countries</div><div id="totalCountries" class="value">0</div></div>
         </div>
-        <hr/>
-        <div class="swipe-card" id="candidate-card">
-          <div id="candidate-empty" class="center">
-            <div class="muted">No more candidates right now. We’ll keep checking for new matches…</div>
+        <div id="countryMap" class="chart" aria-label="Student home country map"></div>
+        <div class="split">
+          <div>
+            <h3>Students by campus</h3>
+            <div id="campusChart" class="chart"></div>
           </div>
-          <div id="candidate" class="hidden">
-            <img id="c-photo" class="candidate-photo hidden" alt="Candidate photo" />
-            <div class="who"><span id="c-name">—</span></div>
-            <div class="small muted" id="c-meta">—</div>
-            <div class="pill" id="c-tags"></div>
+          <div>
+            <h3>Top programmes</h3>
+            <div id="programmeChart" class="chart"></div>
           </div>
         </div>
-        <div class="actions">
-          <button class="btn" id="btn-left">👎 Pass</button>
-          <button class="btn acc" id="btn-right">👍 Connect</button>
-          <button class="btn ghost" id="btn-refresh">↻ Refresh matches</button>
-        </div>
-        <div class="map-panel" id="country-panel">
-          <div class="map-panel-header">
-            <h3>Where students are joining from</h3>
-            <div id="country-summary" class="small muted">No registered students yet.</div>
-          </div>
-          <div id="country-map" role="img" aria-label="World map of registered students"></div>
-          <div class="small muted">Drag to pan, pinch or scroll to zoom.</div>
-        </div>
-        <div class="map-panel" id="background-panel">
-          <div class="map-panel-header">
-            <h3>Student backgrounds</h3>
-            <div id="background-summary" class="small muted">No background data yet.</div>
-          </div>
-          <div id="background-list" class="background-list"></div>
-        </div>
-        <div class="row">
-          <button class="btn ghost" id="btn-edit-profile">✏️ Edit profile</button>
-          <button class="btn ghost" id="btn-logout">Sign out</button>
-          <div id="status2" class="small muted center"></div>
-        </div>
-      </div>
+      </section>
     </div>
 
-    <!-- RIGHT: Matches -->
-    <div class="card col">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <h2>Your Matches</h2>
-        <div class="small muted" id="last-sync">Last sync: —</div>
-      </div>
-      <div id="matches" class="matches"></div>
-    </div>
+    <footer>© 2026 Yoobee Connect</footer>
   </div>
 
-  <footer class="credits">
-    © 2025 Developed by
-    <a href="https://www.instagram.com/yasassri.me" target="_blank" rel="noopener noreferrer">Yasas Sri Wickramasinghe</a>.
-  </footer>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/map/js/world.js"></script>
+  <script>
+    const BASE_URL = 'https://script.google.com/macros/s/AKfycbyGjR1PbKzZ1zv571z1Mo9LxK0Jr8Ck5uxx726wrChoXcL11wZ6Falf2VXJEM4RiLKi/exec';
 
-<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/map/js/world.js"></script>
-<script>
-/* ==========================
-   CONFIG
-========================== */
-const BASE_URL = 'https://script.google.com/macros/s/AKfycbyGjR1PbKzZ1zv571z1Mo9LxK0Jr8Ck5uxx726wrChoXcL11wZ6Falf2VXJEM4RiLKi/exec';
+    const ui = {
+      form: document.getElementById('studentForm'),
+      saveBtn: document.getElementById('saveBtn'),
+      reloadBtn: document.getElementById('reloadBtn'),
+      status: document.getElementById('status'),
+      refresh: document.getElementById('lastRefresh'),
+      totalStudents: document.getElementById('totalStudents'),
+      totalCampuses: document.getElementById('totalCampuses'),
+      totalCountries: document.getElementById('totalCountries')
+    };
 
-/* ==========================
-   STATE
-========================== */
-let joinCode = null;
-let meProfile = null;
-let deck = [];           // candidate queue
-let swiped = new Set();  // in-session memory
-let matchList = [];      // [{ts, partner:{...}}]
-let current = null;
-let draftPhoto = null;   // base64 data URL awaiting upload
-let studentCountries = new Map(); // Map<code,country>
-let studentBackgrounds = new Map(); // Map<code,background>
-let countryMapChart = null;
-let worldMapLoading = false;
+    const charts = {
+      map: echarts.init(document.getElementById('countryMap')),
+      campus: echarts.init(document.getElementById('campusChart')),
+      programme: echarts.init(document.getElementById('programmeChart'))
+    };
 
-// polling
-let matchPollTimer = null;
-const MATCH_POLL_MS = 20000;
-
-const PHOTO_MAX_DIM = 512;
-const PHOTO_MAX_BYTES = 150 * 1024;
-const PHOTO_MAX_CHAR_LENGTH = 220000;
-
-/* ==========================
-   DOM helpers
-========================== */
-const el = id => document.getElementById(id);
-const show = id => el(id).classList.remove('hidden');
-const hide = id => el(id).classList.add('hidden');
-const normalizeCode = code => (code || '').toString().trim().toUpperCase();
-const normalizeCandidate = cand => {
-  if(!cand || typeof cand !== 'object') return null;
-  const code = normalizeCode(cand.code || cand.id || '');
-  if(!code) return null;
-  const normalized = { ...cand, code };
-  const rawPhoto = normalized.photo || normalized.avatar || normalized.image || '';
-  const safePhoto = normalizePhotoData(rawPhoto);
-  if(safePhoto){
-    normalized.photo = safePhoto;
-  }else{
-    delete normalized.photo;
-  }
-  return normalized;
-};
-const isValidEmail = email => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-
-const buttonBusyCounts = new Map();
-const activeUiTasks = new Map();
-
-function toButtonList(buttons){
-  if(!buttons) return [];
-  if(Array.isArray(buttons)) return buttons.filter(Boolean);
-  return [buttons];
-}
-
-function updateButtonState(id){
-  const btn = el(id);
-  if(!btn) return;
-  const count = buttonBusyCounts.get(id) || 0;
-  if(count > 0){
-    btn.disabled = true;
-    btn.dataset.busy = '1';
-  }else{
-    btn.disabled = false;
-    delete btn.dataset.busy;
-  }
-}
-
-function pushButtonBusy(ids){
-  ids.forEach(id => {
-    const next = (buttonBusyCounts.get(id) || 0) + 1;
-    buttonBusyCounts.set(id, next);
-    updateButtonState(id);
-  });
-}
-
-function popButtonBusy(ids){
-  ids.forEach(id => {
-    const count = buttonBusyCounts.get(id) || 0;
-    if(count <= 1){
-      buttonBusyCounts.delete(id);
-    }else{
-      buttonBusyCounts.set(id, count - 1);
+    function setStatus(message, isError = false) {
+      ui.status.textContent = message;
+      ui.status.style.color = isError ? '#dc2626' : '#059669';
     }
-    updateButtonState(id);
-  });
-}
 
-function runUiTask(key, buttons, task){
-  const ids = toButtonList(buttons);
-  if(key && activeUiTasks.has(key)){
-    return activeUiTasks.get(key);
-  }
-  pushButtonBusy(ids);
-  const promise = (async () => {
-    try{
-      return await task();
-    }finally{
-      popButtonBusy(ids);
-      if(key){
-        activeUiTasks.delete(key);
-      }
+    async function apiGet(action) {
+      const response = await fetch(`${BASE_URL}?action=${encodeURIComponent(action)}`, { cache: 'no-store' });
+      const data = await response.json();
+      if (!data.ok) throw new Error(data.error || 'Request failed');
+      return data;
     }
-  })();
-  if(key){
-    activeUiTasks.set(key, promise);
-  }
-  return promise;
-}
-const COUNTRY_LIST = [
-  'Afghanistan', 'Albania', 'Algeria', 'Andorra', 'Angola', 'Antigua and Barbuda', 'Argentina', 'Armenia', 'Australia', 'Austria',
-  'Azerbaijan', 'Bahamas', 'Bahrain', 'Bangladesh', 'Barbados', 'Belarus', 'Belgium', 'Belize', 'Benin', 'Bhutan', 'Bolivia',
-  'Bosnia and Herzegovina', 'Botswana', 'Brazil', 'Brunei', 'Bulgaria', 'Burkina Faso', 'Burundi', 'Cambodia', 'Cameroon', 'Canada',
-  'Cape Verde', 'Central African Republic', 'Chad', 'Chile', 'China', 'Colombia', 'Comoros', 'Congo (Republic)', 'Congo (DRC)',
-  'Costa Rica', "Côte d'Ivoire", 'Croatia', 'Cuba', 'Cyprus', 'Czech Republic', 'Denmark', 'Djibouti', 'Dominica', 'Dominican Republic', 'Ecuador',
-  'Egypt', 'El Salvador', 'Equatorial Guinea', 'Eritrea', 'Estonia', 'Eswatini', 'Ethiopia', 'Fiji', 'Finland', 'France', 'Gabon',
-  'Gambia', 'Georgia', 'Germany', 'Ghana', 'Greece', 'Grenada', 'Guatemala', 'Guinea', 'Guinea-Bissau', 'Guyana', 'Haiti', 'Honduras',
-  'Hungary', 'Iceland', 'India', 'Indonesia', 'Iran', 'Iraq', 'Ireland', 'Israel', 'Italy', 'Jamaica', 'Japan', 'Jordan', 'Kazakhstan',
-  'Kenya', 'Kiribati', 'Kuwait', 'Kyrgyzstan', 'Laos', 'Latvia', 'Lebanon', 'Lesotho', 'Liberia', 'Libya', 'Liechtenstein',
-  'Lithuania', 'Luxembourg', 'Madagascar', 'Malawi', 'Malaysia', 'Maldives', 'Mali', 'Malta', 'Marshall Islands', 'Mauritania',
-  'Mauritius', 'Mexico', 'Micronesia', 'Moldova', 'Monaco', 'Mongolia', 'Montenegro', 'Morocco', 'Mozambique', 'Myanmar', 'Namibia',
-  'Nauru', 'Nepal', 'Netherlands', 'New Zealand', 'Nicaragua', 'Niger', 'Nigeria', 'North Korea', 'North Macedonia', 'Norway', 'Oman',
-  'Pakistan', 'Palestine', 'Palau', 'Panama', 'Papua New Guinea', 'Paraguay', 'Peru', 'Philippines', 'Poland', 'Portugal', 'Qatar', 'Romania',
-  'Russia', 'Rwanda', 'Saint Kitts and Nevis', 'Saint Lucia', 'Saint Vincent and the Grenadines', 'Samoa', 'San Marino',
-  'Sao Tome and Principe', 'Saudi Arabia', 'Senegal', 'Serbia', 'Seychelles', 'Sierra Leone', 'Singapore', 'Slovakia', 'Slovenia',
-  'Solomon Islands', 'Somalia', 'South Africa', 'South Korea', 'South Sudan', 'Spain', 'Sri Lanka', 'Sudan', 'Suriname', 'Sweden',
-  'Switzerland', 'Syria', 'Taiwan', 'Tajikistan', 'Tanzania', 'Thailand', 'Timor-Leste', 'Togo', 'Tonga', 'Trinidad and Tobago',
-  'Tunisia', 'Turkey', 'Turkmenistan', 'Tuvalu', 'Uganda', 'Ukraine', 'United Arab Emirates', 'United Kingdom', 'United States',
-  'Uruguay', 'Uzbekistan', 'Vanuatu', 'Vatican City', 'Venezuela', 'Vietnam', 'Yemen', 'Zambia', 'Zimbabwe'
-];
-const COUNTRY_ALIASES = {
-  'us': 'United States',
-  'usa': 'United States',
-  'u.s.': 'United States',
-  'u.s.a': 'United States',
-  'united states of america': 'United States',
-  'states': 'United States',
-  'america': 'United States',
-  'uk': 'United Kingdom',
-  'u.k.': 'United Kingdom',
-  'england': 'United Kingdom',
-  'scotland': 'United Kingdom',
-  'wales': 'United Kingdom',
-  'northern ireland': 'United Kingdom',
-  'uae': 'United Arab Emirates',
-  'u.a.e': 'United Arab Emirates',
-  'emirates': 'United Arab Emirates',
-  'south korea': 'South Korea',
-  'republic of korea': 'South Korea',
-  'korea, republic of': 'South Korea',
-  'korea republic': 'South Korea',
-  'korea': 'South Korea',
-  'north korea': 'North Korea',
-  'peoples republic of china': 'China',
-  'mainland china': 'China',
-  'pr china': 'China',
-  'hong kong': 'Hong Kong',
-  'taiwan, province of china': 'Taiwan',
-  'viet nam': 'Vietnam',
-  'russian federation': 'Russia',
-  'czechia': 'Czech Republic',
-  'ivory coast': "Côte d'Ivoire",
-  'cote d\'ivoire': "Côte d'Ivoire",
-  'côte d\'ivoire': "Côte d'Ivoire",
-  'drc': 'Congo (DRC)',
-  'democratic republic of the congo': 'Congo (DRC)',
-  'republic of the congo': 'Congo (Republic)',
-  'congo': 'Congo (Republic)',
-  'myanmar (burma)': 'Myanmar',
-  'burma': 'Myanmar',
-  'swaziland': 'Eswatini',
-  'united republic of tanzania': 'Tanzania',
-  'syrian arab republic': 'Syria',
-  'islamic republic of iran': 'Iran',
-  'bolivia (plurinational state of)': 'Bolivia',
-  'lao people\'s democratic republic': 'Laos',
-  'kyrgyz republic': 'Kyrgyzstan',
-  'timor leste': 'Timor-Leste',
-  'macedonia': 'North Macedonia',
-  'brunei darussalam': 'Brunei',
-  'palestinian territories': 'Palestine',
-  'palestinian territory': 'Palestine'
-};
-const BACKGROUND_STOPWORDS = new Set(['and', 'of', 'in', 'for', 'the', 'a', 'an', 'to', 'with', 'on', 'from', 'at', 'by']);
-function backgroundKey(value){
-  if(!value) return '';
-  return String(value)
-    .toLowerCase()
-    .replace(/&/g, ' and ')
-    .replace(/[._:,;()/\\-]+/g, ' ')
-    .replace(/[^a-z0-9+\s]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-const BACKGROUND_ALIAS_BASE = {
-  'Information Technology': 'Information Technology',
-  'Info Tech': 'Information Technology',
-  'Information Tech': 'Information Technology',
-  'Information-Technology': 'Information Technology',
-  'InformationTechnology': 'Information Technology',
-  'IT': 'Information Technology',
-  'I.T.': 'Information Technology',
-  'I T': 'Information Technology',
-  'Computer Science': 'Information Technology',
-  'CS': 'Information Technology',
-  'ICT': 'Information Technology',
-  'Cyber Security': 'Information Technology',
-  'Cybersecurity': 'Information Technology',
-  'Artificial Intelligence': 'Information Technology',
-  'Machine Learning': 'Information Technology',
-  'Data Science': 'Information Technology',
-  'Data Analytics': 'Information Technology',
-  'Information Systems': 'Information Technology',
-  'Information System': 'Information Technology',
-  'Software Engineering': 'Information Technology',
-  'Software Engineer': 'Information Technology',
-  'Software Development': 'Information Technology',
-  'Software Developer': 'Information Technology',
-  'Software': 'Information Technology',
-  'Web Development': 'Information Technology',
-  'Web Developer': 'Information Technology',
-  'Programming': 'Information Technology',
-  'Developer': 'Information Technology',
-  'Development': 'Information Technology',
-  'Networking': 'Information Technology',
-  'Network Engineering': 'Information Technology',
-  'Graphic Design': 'Design & Creative Media',
-  'Graphics Design': 'Design & Creative Media',
-  'Design': 'Design & Creative Media',
-  'UI Design': 'Design & Creative Media',
-  'UX Design': 'Design & Creative Media',
-  'UX UI Design': 'Design & Creative Media',
-  'Product Design': 'Design & Creative Media',
-  'Visual Design': 'Design & Creative Media',
-  'Visual Communication': 'Design & Creative Media',
-  'Creative Media': 'Design & Creative Media',
-  'Digital Media': 'Design & Creative Media',
-  'Illustration': 'Design & Creative Media',
-  'Illustrator': 'Design & Creative Media',
-  'Animation': 'Animation & 3D',
-  '3D Animation': 'Animation & 3D',
-  '3D Art': 'Animation & 3D',
-  'VFX': 'Animation & 3D',
-  'Visual Effects': 'Animation & 3D',
-  'Motion Graphics': 'Animation & 3D',
-  'Game Design': 'Game Development',
-  'Game Development': 'Game Development',
-  'Game Dev': 'Game Development',
-  'Game Programming': 'Game Development',
-  'Game Artist': 'Game Development',
-  'Business': 'Business & Marketing',
-  'Business Management': 'Business & Marketing',
-  'Business Administration': 'Business & Marketing',
-  'Marketing': 'Business & Marketing',
-  'Digital Marketing': 'Business & Marketing',
-  'Advertising': 'Business & Marketing',
-  'Accounting': 'Business & Marketing',
-  'Finance': 'Business & Marketing',
-  'Entrepreneurship': 'Business & Marketing',
-  'Film': 'Film & Storytelling',
-  'Film Production': 'Film & Storytelling',
-  'Storytelling': 'Film & Storytelling',
-  'Screen Production': 'Film & Storytelling',
-  'Media Production': 'Film & Storytelling',
-  'Broadcasting': 'Film & Storytelling',
-  'Photography': 'Photography',
-  'Photographer': 'Photography',
-  'Engineering': 'Engineering',
-  'Mechanical Engineering': 'Engineering',
-  'Civil Engineering': 'Engineering',
-  'Electrical Engineering': 'Engineering',
-  'Architecture': 'Architecture',
-  'Education': 'Education',
-  'Teaching': 'Education',
-  'Teacher': 'Education'
-};
-const BACKGROUND_ALIAS_MAP = {};
-Object.entries(BACKGROUND_ALIAS_BASE).forEach(([alias, canonical]) => {
-  const key = backgroundKey(alias);
-  if(key && !BACKGROUND_ALIAS_MAP[key]){
-    BACKGROUND_ALIAS_MAP[key] = canonical;
-  }
-});
-const BACKGROUND_KEYWORD_GROUPS = [
-  { canonical: 'Information Technology', keywords: ['information technology', 'computer science', 'software', 'developer', 'development', 'programming', 'coding', 'engineer', 'web', 'systems', 'technology', 'computing', 'ict', 'cyber', 'data', 'analytics'] },
-  { canonical: 'Design & Creative Media', keywords: ['design', 'designer', 'visual', 'creative', 'ux', 'ui', 'illustration', 'illustrator', 'graphics', 'graphic'] },
-  { canonical: 'Animation & 3D', keywords: ['animation', 'animated', '3d', 'vfx', 'cg', 'cgi', 'motion'] },
-  { canonical: 'Game Development', keywords: ['game', 'gaming', 'interactive'] },
-  { canonical: 'Business & Marketing', keywords: ['business', 'marketing', 'commerce', 'management', 'entrepreneurship', 'finance', 'accounting'] },
-  { canonical: 'Film & Storytelling', keywords: ['film', 'story', 'screen', 'cinema', 'broadcast', 'production'] },
-  { canonical: 'Photography', keywords: ['photography', 'photographer', 'photo'] },
-  { canonical: 'Engineering', keywords: ['engineering', 'engineer'] },
-  { canonical: 'Education', keywords: ['education', 'teaching', 'teacher', 'tutor'] }
-];
-function normalizeCountryName(name){
-  if(!name) return '';
-  const trimmed = String(name).trim();
-  if(!trimmed) return '';
-  const lower = trimmed.toLowerCase();
-  if(COUNTRY_ALIASES[lower]) return COUNTRY_ALIASES[lower];
-  const direct = COUNTRY_LIST.find(country => country.toLowerCase() === lower);
-  if(direct) return direct;
-  return trimmed
-    .replace(/\s+/g, ' ')
-    .split(' ')
-    .map(part => part ? part.charAt(0).toUpperCase() + part.slice(1) : '')
-    .join(' ');
-}
-function registerStudentCountry(code, country){
-  const normalizedCode = normalizeCode(code);
-  if(!normalizedCode) return false;
-  const normalizedCountry = normalizeCountryName(country);
-  if(!normalizedCountry){
-    if(studentCountries.has(normalizedCode)){
-      studentCountries.delete(normalizedCode);
-      return true;
+
+    async function apiPost(payload) {
+      const response = await fetch(BASE_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(payload)
+      });
+      const data = await response.json();
+      if (!data.ok) throw new Error(data.error || 'Request failed');
+      return data;
     }
-    return false;
-  }
-  const existing = studentCountries.get(normalizedCode);
-  if(existing === normalizedCountry) return false;
-  studentCountries.set(normalizedCode, normalizedCountry);
-  return true;
-}
-function registerProfilesCountries(list){
-  if(!Array.isArray(list)) return false;
-  let changed = false;
-  list.forEach(profile => {
-    if(!profile) return;
-    const code = profile.code || profile.id || '';
-    if(registerStudentCountry(code, profile.country || profile.nation || '')){
-      changed = true;
-    }
-  });
-  return changed;
-}
-function tokenizeBackground(key){
-  if(!key) return [];
-  return key
-    .split(/\s+/)
-    .map(token => token.trim())
-    .filter(token => token && !BACKGROUND_STOPWORDS.has(token));
-}
-function toTitleCase(str){
-  if(!str) return '';
-  return str
-    .split(' ')
-    .map(word => {
-      if(!word) return '';
-      if(word.length <= 3 && word === word.toUpperCase()) return word;
-      if(/^[0-9]/.test(word)){
-        return word.charAt(0).toUpperCase() + word.slice(1).toUpperCase();
-      }
-      if(/^[A-Z0-9]+$/.test(word) && !/[a-z]/.test(word)){
-        return word;
-      }
-      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
-    })
-    .join(' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-function computeTokenSimilarity(tokens, tokenSet){
-  if(!tokens.length || !tokenSet || !tokenSet.size) return 0;
-  let intersection = 0;
-  tokens.forEach(token => {
-    if(tokenSet.has(token)) intersection += 1;
-  });
-  const union = new Set([...tokens, ...tokenSet]);
-  if(!union.size) return 0;
-  return intersection / union.size;
-}
-function matchBackgroundAlias(key, tokens){
-  if(BACKGROUND_ALIAS_MAP[key]) return BACKGROUND_ALIAS_MAP[key];
-  const collapsed = key.replace(/\s+/g, '');
-  if(BACKGROUND_ALIAS_MAP[collapsed]) return BACKGROUND_ALIAS_MAP[collapsed];
-  if(tokens.length === 1){
-    const single = tokens[0];
-    if(BACKGROUND_ALIAS_MAP[single]) return BACKGROUND_ALIAS_MAP[single];
-  }
-  return null;
-}
-function matchBackgroundKeywords(key, tokens){
-  for(const group of BACKGROUND_KEYWORD_GROUPS){
-    const { canonical, keywords } = group;
-    const matched = keywords.some(keyword => {
-      if(keyword.includes(' ')){
-        return key.includes(keyword);
-      }
-      return tokens.some(token => token === keyword || token.startsWith(keyword));
-    });
-    if(matched){
-      return canonical;
-    }
-  }
-  return null;
-}
-function matchExistingBackgroundCluster(tokens, clusters){
-  let bestScore = 0;
-  let bestCanonical = '';
-  clusters.forEach((meta, canonical) => {
-    const score = computeTokenSimilarity(tokens, meta.tokens);
-    if(score > bestScore){
-      bestScore = score;
-      bestCanonical = canonical;
-    }
-  });
-  return bestScore >= 0.6 ? bestCanonical : null;
-}
-function determineBackgroundCanonical(displayValue, key, tokens, clusters){
-  if(!key) return '';
-  const aliasMatch = matchBackgroundAlias(key, tokens);
-  if(aliasMatch) return aliasMatch;
-  const keywordMatch = matchBackgroundKeywords(key, tokens);
-  if(keywordMatch) return keywordMatch;
-  const dynamicMatch = matchExistingBackgroundCluster(tokens, clusters);
-  if(dynamicMatch) return dynamicMatch;
-  return toTitleCase(displayValue);
-}
-function registerStudentBackground(code, background){
-  const normalizedCode = normalizeCode(code);
-  if(!normalizedCode) return false;
-  const value = (background || '').toString().trim();
-  if(!value){
-    if(studentBackgrounds.has(normalizedCode)){
-      studentBackgrounds.delete(normalizedCode);
-      return true;
-    }
-    return false;
-  }
-  const existing = studentBackgrounds.get(normalizedCode);
-  if(existing === value) return false;
-  studentBackgrounds.set(normalizedCode, value);
-  return true;
-}
-function registerProfilesBackgrounds(list){
-  if(!Array.isArray(list)) return false;
-  let changed = false;
-  list.forEach(profile => {
-    if(!profile) return;
-    const code = profile.code || profile.id || '';
-    const background = profile.background || profile.major || profile.programme || profile.program || profile.study || profile.course || '';
-    if(registerStudentBackground(code, background)){
-      changed = true;
-    }
-  });
-  return changed;
-}
-function computeBackgroundClusters(){
-  const clusters = new Map();
-  let total = 0;
-  studentBackgrounds.forEach(value => {
-    const trimmed = (value || '').trim();
-    if(!trimmed) return;
-    total += 1;
-    const key = backgroundKey(trimmed);
-    if(!key) return;
-    const tokens = tokenizeBackground(key);
-    const canonical = determineBackgroundCanonical(trimmed, key, tokens, clusters);
-    if(!canonical) return;
-    const meta = clusters.get(canonical) || { count: 0, variants: new Set(), tokens: new Set() };
-    meta.count += 1;
-    meta.variants.add(toTitleCase(trimmed));
-    tokens.forEach(token => meta.tokens.add(token));
-    clusters.set(canonical, meta);
-  });
-  return { clusters, total };
-}
-function updateBackgroundInsights(){
-  const summaryNode = el('background-summary');
-  const listNode = el('background-list');
-  if(!summaryNode || !listNode) return;
-  const { clusters, total } = computeBackgroundClusters();
-  if(!total){
-    summaryNode.textContent = 'No background data yet.';
-    listNode.innerHTML = '<div class="muted small">Background insights will appear once students add them.</div>';
-    return;
-  }
-  const areaCount = clusters.size;
-  summaryNode.textContent = `${total} ${total === 1 ? 'student' : 'students'} across ${areaCount} ${areaCount === 1 ? 'background' : 'backgrounds'}.`;
-  const entries = Array.from(clusters.entries()).sort((a, b) => {
-    if(b[1].count !== a[1].count) return b[1].count - a[1].count;
-    return a[0].localeCompare(b[0]);
-  });
-  const displayEntries = entries.slice(0, 8);
-  const maxCount = displayEntries.reduce((max, [, meta]) => Math.max(max, meta.count), 0) || 1;
-  listNode.innerHTML = displayEntries.map(([canonical, meta]) => {
-    const variants = Array.from(meta.variants).filter(variant => variant.toLowerCase() !== canonical.toLowerCase());
-    const shownVariants = variants.slice(0, 3);
-    const remaining = variants.length - shownVariants.length;
-    const variantHtml = variants.length
-      ? `<div class="background-variants">Also noted as ${shownVariants.map(v => `<span class="background-variant">${escapeHtml(v)}</span>`).join(' ')}${remaining > 0 ? ` <span class="background-variants-more">+${remaining} more</span>` : ''}</div>`
-      : '';
-    const width = Math.max(8, Math.min(100, (meta.count / maxCount) * 100));
-    const studentLabel = meta.count === 1 ? 'student' : 'students';
-    return `
-      <div class="background-item">
-        <div class="background-item-header">
-          <span>${escapeHtml(canonical)}</span>
-          <span class="muted">${meta.count} ${studentLabel}</span>
-        </div>
-        <div class="background-bar-track">
-          <div class="background-bar-fill" style="width:${width}%"></div>
-        </div>
-        ${variantHtml}
-      </div>
-    `;
-  }).join('');
-  if(entries.length > displayEntries.length){
-    const hiddenCount = entries.length - displayEntries.length;
-    listNode.insertAdjacentHTML('beforeend', `<div class="small muted">+${hiddenCount} more background${hiddenCount === 1 ? '' : 's'} not shown.</div>`);
-  }
-}
-function getCountryCounts(){
-  const counts = new Map();
-  studentCountries.forEach(country => {
-    if(!country) return;
-    counts.set(country, (counts.get(country) || 0) + 1);
-  });
-  return counts;
-}
-function ensureCountryMap(){
-  if(countryMapChart) return countryMapChart;
-  if(typeof echarts === 'undefined') return null;
-  const node = el('country-map');
-  if(!node) return null;
-  countryMapChart = echarts.init(node);
-  return countryMapChart;
-}
-function ensureWorldMapData(){
-  if(typeof echarts === 'undefined' || typeof echarts.getMap !== 'function') return false;
-  if(echarts.getMap('world')) return true;
-  if(worldMapLoading) return false;
-  const WORLD_MAP_URL = 'world.json';
-  worldMapLoading = true;
-  fetch(WORLD_MAP_URL)
-    .then(response => {
-      if(!response.ok) throw new Error(`Failed to load world map: ${response.status}`);
-      return response.json();
-    })
-    .then(geoJson => {
-      if(geoJson){
-        echarts.registerMap('world', geoJson);
-        renderCountryMap();
-      }
-    })
-    .catch(error => {
-      console.error('Unable to initialise world map', error);
-    })
-    .finally(() => {
-      worldMapLoading = false;
-    });
-  return false;
-}
-function renderCountryMap(){
-  const chart = ensureCountryMap();
-  if(!chart) return;
-  if(!ensureWorldMapData()) return;
-  const counts = getCountryCounts();
-  const data = Array.from(counts.entries()).map(([name, value]) => ({ name, value }));
-  const maxValue = data.reduce((max, item) => Math.max(max, item.value), 0);
-  const option = {
-    tooltip: {
-      trigger: 'item',
-      formatter: params => {
-        if(!params) return '';
-        const value = typeof params.value === 'number' && !Number.isNaN(params.value) ? params.value : 0;
-        if(value > 0){
-          return `${params.name}<br/>Students: ${value}`;
-        }
-        return `${params.name}<br/>No registered students yet`;
-      }
-    },
-    visualMap: {
-      show: false,
-      min: 0,
-      max: Math.max(1, maxValue),
-      inRange: { color: ['#E0F2FF', '#0A84FF'] }
-    },
-    series: [{
-      name: 'Registered students',
-      type: 'map',
-      map: 'world',
-      roam: true,
-      emphasis: {
-        label: { show: false },
-        itemStyle: {
-          areaColor: '#0A84FF',
-          shadowBlur: 12,
-          shadowColor: 'rgba(10, 132, 255, 0.35)'
-        }
-      },
-      itemStyle: {
-        borderColor: '#d0d7e2',
-        areaColor: '#eef2f9'
-      },
-      data
-    }]
-  };
-  chart.setOption(option, true);
-}
-function updateCountrySummary(){
-  const summary = el('country-summary');
-  if(!summary) return;
-  const counts = getCountryCounts();
-  const totalStudents = Array.from(studentCountries.values()).filter(Boolean).length;
-  if(!totalStudents){
-    summary.textContent = 'No registered students yet.';
-    return;
-  }
-  const totalCountries = counts.size;
-  const studentWord = totalStudents === 1 ? 'student' : 'students';
-  const countryWord = totalCountries === 1 ? 'country' : 'countries';
-  summary.textContent = `${totalStudents} registered ${studentWord} from ${totalCountries} ${countryWord}.`;
-}
-function updateCountryInsights(){
-  updateCountrySummary();
-  renderCountryMap();
-  refreshCountryMapSize();
-}
-function refreshCountryMapSize(){
-  if(countryMapChart){
-    countryMapChart.resize();
-  }
-}
-function onSwipeScreenVisible(){
-  requestAnimationFrame(() => refreshCountryMapSize());
-  setTimeout(refreshCountryMapSize, 180);
-}
 
-function normalizePhotoData(data){
-  if(typeof data !== 'string') return '';
-  const trimmed = data.trim();
-  if(!/^data:image\/(png|jpe?g|webp);base64,/i.test(trimmed)) return '';
-  if(trimmed.length > PHOTO_MAX_CHAR_LENGTH) return '';
-  return trimmed;
-}
-
-function estimateBase64Bytes(dataUrl){
-  if(!dataUrl) return 0;
-  const comma = dataUrl.indexOf(',');
-  const base64 = (comma >= 0 ? dataUrl.slice(comma + 1) : dataUrl).replace(/\s+/g, '');
-  if(!base64.length) return 0;
-  const padding = (base64.match(/=+$/) || [''])[0].length;
-  return Math.max(0, Math.ceil((base64.length * 3) / 4) - padding);
-}
-
-function fileToDataUrl(file){
-  return new Promise((resolve, reject)=>{
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = () => reject(new Error('Unable to read file'));
-    reader.readAsDataURL(file);
-  });
-}
-
-function loadImageFromDataUrl(dataUrl){
-  return new Promise((resolve, reject)=>{
-    const img = new Image();
-    img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error('Unable to decode image'));
-    img.src = dataUrl;
-  });
-}
-
-async function compressImageFile(file){
-  const dataUrl = await fileToDataUrl(file);
-  const img = await loadImageFromDataUrl(dataUrl);
-  const canvas = document.createElement('canvas');
-  const maxSide = Math.max(img.width || 1, img.height || 1);
-  const scale = maxSide > PHOTO_MAX_DIM ? PHOTO_MAX_DIM / maxSide : 1;
-  const width = Math.max(1, Math.round((img.width || 1) * scale));
-  const height = Math.max(1, Math.round((img.height || 1) * scale));
-  canvas.width = width;
-  canvas.height = height;
-  const ctx = canvas.getContext('2d');
-  ctx.clearRect(0, 0, width, height);
-  ctx.drawImage(img, 0, 0, width, height);
-  let quality = 0.8;
-  let output = canvas.toDataURL('image/jpeg', quality);
-  for(let i=0;i<5 && estimateBase64Bytes(output) > PHOTO_MAX_BYTES;i++){
-    quality -= 0.12;
-    if(quality < 0.35){ break; }
-    output = canvas.toDataURL('image/jpeg', quality);
-  }
-  if(estimateBase64Bytes(output) > PHOTO_MAX_BYTES){
-    throw new Error('Photo is too large even after compression. Please choose a smaller image.');
-  }
-  return output;
-}
-
-function setPhotoPreview(data){
-  const preview = el('photo-preview');
-  if(!preview) return;
-  const normalized = normalizePhotoData(data || '');
-  if(normalized){
-    preview.src = normalized;
-    preview.classList.remove('hidden');
-  }else{
-    preview.src = '';
-    preview.classList.add('hidden');
-  }
-}
-
-function setPhotoStatus(msg='', isError=false){
-  const node = el('photo-status');
-  if(!node) return;
-  node.textContent = msg || '';
-  node.classList.toggle('error', !!isError);
-}
-
-function applyProfilePhoto(profile){
-  if(!profile || typeof profile !== 'object') return;
-  const safe = normalizePhotoData(profile.photo || '');
-  if(safe){
-    profile.photo = safe;
-  }else{
-    delete profile.photo;
-  }
-}
-
-function refreshPhotoPreview(){
-  const source = draftPhoto || (meProfile && meProfile.photo) || '';
-  setPhotoPreview(source);
-}
-
-async function getPhotoDataForSubmit(){
-  const input = el('photo');
-  if(input && input.files && input.files[0]){
-    if(draftPhoto){
-      return normalizePhotoData(draftPhoto) || '';
-    }
-    const file = input.files[0];
-    if(!file.type || !file.type.startsWith('image/')){
-      throw new Error('Please choose an image file for your profile photo.');
-    }
-    setPhotoStatus('Optimising photo…');
-    const compressed = await compressImageFile(file);
-    const normalized = normalizePhotoData(compressed);
-    if(!normalized){
-      throw new Error('Unable to prepare that photo. Try a different image.');
-    }
-    draftPhoto = normalized;
-    refreshPhotoPreview();
-    setPhotoStatus('Photo ready to upload.');
-    return normalized;
-  }
-  if(draftPhoto){
-    return normalizePhotoData(draftPhoto) || '';
-  }
-  if(meProfile && meProfile.photo){
-    return normalizePhotoData(meProfile.photo) || '';
-  }
-  return '';
-}
-function setStatus(msg, where='status'){ el(where).textContent = msg || ''; }
-function populateCountrySelect(selected=''){
-  const select = el('country');
-  if(!select) return;
-  const chosen = selected || select.value || '';
-  select.innerHTML = '';
-  const placeholder = document.createElement('option');
-  placeholder.value = '';
-  placeholder.textContent = 'Select country…';
-  placeholder.disabled = true;
-  if(!chosen) placeholder.selected = true;
-  select.appendChild(placeholder);
-  COUNTRY_LIST.forEach(country => {
-    const opt = document.createElement('option');
-    opt.value = country;
-    opt.textContent = country;
-    if(country === chosen) opt.selected = true;
-    select.appendChild(opt);
-  });
-}
-function populateProfileFormFromState(){
-  const profile = meProfile || {};
-  applyProfilePhoto(profile);
-  const nameField = el('name');
-  if(nameField){ nameField.value = profile.name || ''; }
-  const campusField = el('campus');
-  if(campusField){ campusField.value = profile.campus || ''; }
-  const genderField = el('gender');
-  if(genderField){ genderField.value = profile.gender || ''; }
-  populateCountrySelect(profile.country || '');
-  const backgroundField = el('background');
-  if(backgroundField){ backgroundField.value = profile.background || ''; }
-  const interestsField = el('interests');
-  if(interestsField){
-    if(Array.isArray(profile.interests)){
-      interestsField.value = profile.interests.join(', ');
-    }else{
-      interestsField.value = profile.interests || '';
-    }
-  }
-  const hobbiesField = el('hobbies');
-  if(hobbiesField){
-    if(Array.isArray(profile.hobbies)){
-      hobbiesField.value = profile.hobbies.join(', ');
-    }else{
-      hobbiesField.value = profile.hobbies || '';
-    }
-  }
-  const contactField = el('contact');
-  if(contactField){
-    contactField.value = profile.teams || profile.contact || '';
-  }
-  const photoInput = el('photo');
-  if(photoInput){ photoInput.value = ''; }
-  if(!draftPhoto){
-    draftPhoto = '';
-  }
-  refreshPhotoPreview();
-  setPhotoStatus('');
-  const subtitle = el('profile-subtitle');
-  const hasCode = !!normalizeCode(joinCode);
-  if(subtitle){
-    subtitle.textContent = hasCode ? 'Update your profile' : 'Create your profile (one-time)';
-  }
-  const saveBtn = el('btn-register');
-  if(saveBtn){
-    saveBtn.textContent = hasCode ? 'Save changes' : 'Save & Start';
-  }
-}
-
-/* ==========================
-   STORAGE
-========================== */
-function saveSession(){
-  joinCode = normalizeCode(joinCode);
-  localStorage.setItem('yc_code', joinCode || '');
-  const profileToSave = { ...(meProfile || {}) };
-  applyProfilePhoto(profileToSave);
-  localStorage.setItem('yc_profile', JSON.stringify(profileToSave));
-}
-function loadSession(){
-  joinCode = normalizeCode(localStorage.getItem('yc_code') || '');
-  try{ meProfile = JSON.parse(localStorage.getItem('yc_profile')||'{}'); }catch{ meProfile = {}; }
-  if(!meProfile || typeof meProfile !== 'object'){ meProfile = {}; }
-  applyProfilePhoto(meProfile);
-  draftPhoto = '';
-  studentCountries.clear();
-  studentBackgrounds.clear();
-  if(joinCode && meProfile && meProfile.country){
-    registerStudentCountry(joinCode, meProfile.country);
-  }
-  if(joinCode && meProfile && meProfile.background){
-    registerStudentBackground(joinCode, meProfile.background);
-  }
-  updateCountryInsights();
-  updateBackgroundInsights();
-}
-function clearSession(){
-  localStorage.removeItem('yc_code');
-  localStorage.removeItem('yc_profile');
-  draftPhoto = '';
-  studentCountries.clear();
-  studentBackgrounds.clear();
-  updateCountryInsights();
-  updateBackgroundInsights();
-}
-
-/* ==========================
-   API (no headers => simple request, no preflight)
-========================== */
-async function apiGet(params){
-  const url = new URL(BASE_URL);
-  Object.entries(params).forEach(([k,v])=> url.searchParams.set(k, v));
-  const r = await fetch(url.toString(), { method:'GET' }); // no headers
-  const text = await r.text();
-  try { return JSON.parse(text); } catch { throw new Error('Bad JSON: ' + text); }
-}
-
-async function apiPost(body){
-  // IMPORTANT: no custom headers; string body keeps it a "simple" request (no OPTIONS)
-  let r;
-  try{
-    r = await fetch(BASE_URL, { method:'POST', body: JSON.stringify(body) });
-  }catch(e){
-    throw new Error('Network error: ' + (e && e.message ? e.message : e));
-  }
-  const text = await r.text();
-  try { return JSON.parse(text); }
-  catch { throw new Error('Bad JSON from server: ' + text.slice(0,200)); }
-}
-
-/* ==========================
-   MATCH POLLING
-========================== */
-function startMatchPolling(){
-  stopMatchPolling();
-  joinCode = normalizeCode(joinCode);
-  if(!joinCode) return;
-  const tick = async () => {
-    if(document.visibilityState === 'visible' && joinCode){
-      try { await syncMatchesFromServer(); } catch(_e){}
-    }
-  };
-  matchPollTimer = setInterval(tick, MATCH_POLL_MS);
-  setTimeout(tick, 1000);
-}
-function stopMatchPolling(){
-  if(matchPollTimer){ clearInterval(matchPollTimer); matchPollTimer = null; }
-}
-document.addEventListener('visibilitychange', ()=>{
-  if(document.visibilityState === 'visible' && joinCode){
-    syncMatchesFromServer().catch(()=>{});
-  }
-});
-
-/* ==========================
-   FLOWS
-========================== */
-async function saveProfile(){
-  const name = el('name').value.trim();
-  const campus = el('campus').value.trim();
-  const gender = el('gender').value.trim();
-  const country = el('country').value.trim();
-  const background = el('background').value.trim();
-  const interests = el('interests').value.trim();
-  const hobbies = el('hobbies').value.trim();
-  const contactEmail = el('contact').value.trim();
-  if(!name || !campus || !gender || !background){
-    setStatus('Please fill Name, Campus, Gender, and Background.'); return;
-  }
-  if(!country || !interests || !hobbies || !contactEmail){
-    setStatus('Country, interests, hobbies, and email are required.'); return;
-  }
-  if(!isValidEmail(contactEmail)){
-    setStatus('Please enter a valid email address.'); return;
-  }
-  const interestList = interests.split(',').map(s => s.trim()).filter(Boolean);
-  const hobbyList = hobbies.split(',').map(s => s.trim()).filter(Boolean);
-  let photoData = '';
-  try{
-    photoData = await getPhotoDataForSubmit();
-  }catch(e){
-    const msg = e && e.message ? e.message : 'Unable to process photo.';
-    setPhotoStatus(msg, true);
-    setStatus(msg);
-    return;
-  }
-  const isUpdate = !!normalizeCode(joinCode);
-  setStatus(isUpdate ? 'Updating your profile…' : 'Saving…');
-  let res;
-  try{
-    const payload = { action: isUpdate ? 'update' : 'register', name, campus, gender, country, background, interests, hobbies, teams: contactEmail, photoData };
-    if(isUpdate){ payload.code = joinCode; }
-    res = await apiPost(payload);
-  }catch(e){
-    setStatus('Save failed: ' + e.message);
-    return;
-  }
-  if(!res.ok){ setStatus('Error: ' + res.error); return; }
-
-  joinCode = normalizeCode(res.code || joinCode);
-  meProfile = res.profile||{};
-  applyProfilePhoto(meProfile);
-  if(meProfile){
-    meProfile.name = meProfile.name || name;
-    meProfile.campus = meProfile.campus || campus;
-    meProfile.country = meProfile.country || country;
-    meProfile.interests = Array.isArray(meProfile.interests) && meProfile.interests.length ? meProfile.interests : interestList;
-    meProfile.hobbies = Array.isArray(meProfile.hobbies) && meProfile.hobbies.length ? meProfile.hobbies : hobbyList;
-    meProfile.teams = meProfile.teams || contactEmail;
-    meProfile.gender = meProfile.gender || gender;
-    meProfile.background = meProfile.background || background;
-    if(!meProfile.photo && photoData){
-      meProfile.photo = normalizePhotoData(photoData);
-    }
-  }
-  registerStudentCountry(joinCode, meProfile && meProfile.country ? meProfile.country : country);
-  registerStudentBackground(joinCode, meProfile && meProfile.background ? meProfile.background : background);
-  updateCountryInsights();
-  updateBackgroundInsights();
-  draftPhoto = '';
-  saveSession();
-  populateProfileFormFromState();
-
-  el('me-name').textContent = meProfile.name || name;
-  el('me-code').textContent = joinCode;
-  refreshPhotoPreview();
-  setPhotoStatus(meProfile && meProfile.photo ? 'Photo saved.' : '');
-  const photoInput = el('photo');
-  if(photoInput){ photoInput.value = ''; }
-  setStatus('');
-  setStatus(isUpdate ? 'Profile updated.' : '', 'status2');
-  deck = [];
-  swiped.clear();
-  current = null;
-  hide('screen-profile'); show('screen-swipe');
-  onSwipeScreenVisible();
-  startMatchPolling();
-  await fetchCandidates();
-  await syncMatchesFromServer(); // hydrate
-  await nextCard();
-}
-
-async function restore(){
-  loadSession();
-  const code = normalizeCode(prompt('Enter your join code:', joinCode || ''));
-  if(!code){ return; }
-  setStatus('Restoring…');
-  let res;
-  try{
-    res = await apiGet({ action:'restore', code });
-  }catch(e){
-    setStatus('Restore failed: ' + e.message);
-    return;
-  }
-  if(!res.ok){ setStatus('Error: ' + res.error); return; }
-  joinCode = code;
-  meProfile = res.profile||{};
-  applyProfilePhoto(meProfile);
-  matchList = Array.isArray(res.matches)? res.matches : [];
-  registerStudentCountry(joinCode, meProfile && meProfile.country ? meProfile.country : '');
-  registerStudentBackground(joinCode, meProfile && meProfile.background ? meProfile.background : '');
-  const matchProfiles = (matchList||[]).map(m => m && m.partner ? {
-    code: m.partner.code || m.partner.id || '',
-    country: m.partner.country || m.partner.nation || '',
-    background: m.partner.background || m.partner.study || ''
-  } : null);
-  registerProfilesCountries(matchProfiles);
-  registerProfilesBackgrounds(matchProfiles);
-  updateCountryInsights();
-  updateBackgroundInsights();
-  saveSession();
-  populateProfileFormFromState();
-  draftPhoto = '';
-  refreshPhotoPreview();
-  setPhotoStatus(meProfile && meProfile.photo ? 'Photo restored.' : '');
-  const photoInput = el('photo');
-  if(photoInput){ photoInput.value = ''; }
-  el('me-name').textContent = meProfile.name || '—';
-  el('me-code').textContent = joinCode;
-  setStatus('');
-  hide('screen-profile'); show('screen-swipe');
-  onSwipeScreenVisible();
-  startMatchPolling();
-  renderMatches();
-  await fetchCandidates();
-  await nextCard();
-}
-
-function logout(){
-  stopMatchPolling();
-  clearSession();
-  joinCode = null;
-  meProfile = {};
-  deck = []; swiped.clear(); matchList = []; current=null;
-  el('matches').innerHTML = '';
-  hide('screen-swipe'); show('screen-profile');
-  setStatus('', 'status2');
-  populateProfileFormFromState();
-}
-
-function openProfileEditor(){
-  setStatus('');
-  setStatus('', 'status2');
-  hide('screen-swipe');
-  show('screen-profile');
-  populateProfileFormFromState();
-}
-
-/* ==========================
-   CANDIDATES & SWIPES
-========================== */
-async function fetchCandidates(){
-  return runUiTask('fetchCandidates', [], async () => {
-    const code = normalizeCode(joinCode);
-    if(!code) return;
-    setStatus('Loading candidates…','status2');
-    let res;
-    try{
-      res = await apiGet({ action:'candidates', code });
-    }catch(e){
-      setStatus('Candidates failed: ' + e.message, 'status2');
-      return;
-    }
-    if(!res.ok){ setStatus('Error: ' + res.error, 'status2'); return; }
-    const myCode = normalizeCode(joinCode);
-    const seen = new Set(deck.map(d=> normalizeCode(d.code)));
-    const incoming = Array.isArray(res.candidates) ? res.candidates : [];
-    const normalizedIncoming = incoming
-      .map(normalizeCandidate)
-      .filter(Boolean);
-    const countryChanged = registerProfilesCountries(normalizedIncoming);
-    const backgroundChanged = registerProfilesBackgrounds(normalizedIncoming);
-    normalizedIncoming.forEach(c=>{
-      const code = normalizeCode(c.code);
-      if(!code || code === myCode || seen.has(code) || swiped.has(code)) return;
-      const interests = Array.isArray(c.interests)
-        ? c.interests.slice()
-        : (typeof c.interests === 'string' && c.interests.trim()
-            ? c.interests.split(/[,;|]/).map(t => t.trim()).filter(Boolean)
-            : []);
-      seen.add(code);
-      deck.push({ ...c, code, interests, gender: c.gender || '' });
-    });
-    if(countryChanged){
-      updateCountryInsights();
-    }
-    if(backgroundChanged){
-      updateBackgroundInsights();
-    }
-    setStatus('', 'status2');
-  });
-}
-
-async function onSwipe(dir){
-  if(!current) return;
-  const code = normalizeCode(joinCode);
-  if(!code){ setStatus('Missing join code. Please sign in again.','status2'); return; }
-  const target = normalizeCode(current.code);
-  if(!target){ return; }
-  swiped.add(target);
-  setStatus('Saving swipe…','status2');
-  let res;
-  try{
-    res = await apiPost({ action:'swipe', code, target, dir });
-  }catch(e){
-    swiped.delete(target);
-    setStatus('Swipe failed: ' + e.message, 'status2');
-    return;
-  }
-  if(!res || !res.ok){
-    swiped.delete(target);
-    setStatus('Swipe failed: ' + (res && res.error ? res.error : 'Unknown error'), 'status2');
-    return;
-  }
-  setStatus('', 'status2');
-  if(res.matched && res.partner){
-    recordMatch(res.partner);
-  }
-  if(Array.isArray(res.matches)){
-    applyServerMatches(res.matches);
-  }
-  await nextCard();
-  try { await syncMatchesFromServer(); } catch(_e){}
-}
-
-async function nextCard(){
-  const matchedCodes = new Set(
-    matchList
-      .map(m=> normalizeCode(m && m.partner ? (m.partner.code || m.partner.id || '') : ''))
-      .filter(Boolean)
-  );
-  let next = null;
-  while(deck.length){
-    const c = normalizeCandidate(deck.shift());
-    if(!c) continue;
-    if(normalizeCode(c.code) === normalizeCode(joinCode)) continue;
-    if(swiped.has(c.code) || swiped.has(normalizeCode(c.code))) continue;
-    if(matchedCodes.has(c.code)) continue;
-    next = c; break;
-  }
-  current = next;
-  renderCandidate();
-  if(!current){
-    await fetchCandidates();
-    if(deck.length){ return nextCard(); }
-  }
-}
-
-/* ==========================
-   RENDER
-========================== */
-function renderCandidate(){
-  const empty = el('candidate-empty');
-  const block = el('candidate');
-  if(!current){
-    show('candidate-empty'); hide('candidate');
-    el('c-name').textContent = '';
-    el('c-meta').textContent = '';
-    el('c-tags').innerHTML = '';
-    return;
-  }
-  hide('candidate-empty'); show('candidate');
-  const photoEl = el('c-photo');
-  if(photoEl){
-    const photo = normalizePhotoData(current.photo || '');
-    if(photo){
-      photoEl.src = photo;
-      photoEl.classList.remove('hidden');
-    }else{
-      photoEl.src = '';
-      photoEl.classList.add('hidden');
-    }
-  }
-  el('c-name').textContent = current.name || '(No name)';
-  const genderMeta = current.gender ? ` • ${current.gender}` : '';
-  el('c-meta').textContent = `${current.campus||'—'} • ${current.country||'—'} • ${current.background||'—'}${genderMeta}`;
-  el('c-tags').innerHTML = (current.interests||[]).map(t=>`<span class="tag">${escapeHtml(t)}</span>`).join('') || '<span class="muted small">No interests listed</span>';
-}
-
-function renderMatches(){
-  const box = el('matches');
-  box.innerHTML = '';
-  if(!matchList.length){
-    box.innerHTML = '<div class="muted small">No matches yet.</div>';
-    return;
-  }
-  matchList.forEach(m=>{
-    const p = m.partner || {};
-    const when = m.ts ? new Date(m.ts).toLocaleString() : '';
-    const tags = (p.interests||[]).map(t=>`<span class="tag">${escapeHtml(t)}</span>`).join('');
-    const contactValue = p.teams || p.contact || '';
-    const contactLine = contactValue ? `<div class="small">Email: <b>${escapeHtml(contactValue)}</b></div>` : '';
-    const codeSpan = p.code ? `<div class="small muted">Code: ${escapeHtml(normalizeCode(p.code))}</div>` : '';
-    const genderLine = p.gender ? `<div class="small">Gender: <b>${escapeHtml(p.gender)}</b></div>` : '';
-    const photo = normalizePhotoData(p.photo || '');
-    const safeName = p.name || 'Unknown';
-    const initials = safeName.trim().charAt(0).toUpperCase() || '🤝';
-    const photoHtml = photo
-      ? `<img class="match-photo" src="${escapeHtml(photo)}" alt="${escapeHtml(safeName)}" />`
-      : `<div class="match-photo placeholder">${escapeHtml(initials)}</div>`;
-    box.insertAdjacentHTML('beforeend', `
-      <div class="item match-item">
-        ${photoHtml}
-        <div class="match-body">
-          <div><b>${escapeHtml(safeName)}</b></div>
-          <div class="small muted">${escapeHtml(p.campus||'—')} • ${escapeHtml(p.country||'—')} • ${escapeHtml(p.background||'—')}</div>
-          ${genderLine}
-          <div class="pill" style="margin-top:6px">${tags||'<span class="small muted">No interests</span>'}</div>
-          ${contactLine}
-          ${codeSpan}
-          <div class="small muted" style="margin-top:6px">Matched: ${escapeHtml(when)}</div>
-        </div>
-      </div>
-    `);
-  });
-}
-
-/* ==========================
-   MATCH SYNC
-========================== */
-function recordMatch(partner){
-  const ts = Date.now();
-  const partnerCode = normalizeCode(partner && (partner.code || partner.id || ''));
-  const myCode = normalizeCode(joinCode);
-  if(!partnerCode || (myCode && partnerCode === myCode)) return;
-  const partnerInterests = partner && partner.interests;
-  const partnerHobbies = partner && partner.hobbies;
-  const norm = {
-    ts,
-    partner: {
-      code: partnerCode,
-      name: partner && partner.name ? partner.name : '',
-      campus: partner && partner.campus ? partner.campus : '',
-      country: partner && partner.country ? partner.country : '',
-      background: partner && partner.background ? partner.background : '',
-      gender: partner && partner.gender ? partner.gender : '',
-      interests: Array.isArray(partnerInterests)
-        ? partnerInterests.slice()
-        : (typeof partnerInterests === 'string' && partnerInterests.trim()
-            ? partnerInterests.split(/[,;|]/).map(t => t.trim()).filter(Boolean)
-            : []),
-      hobbies: Array.isArray(partnerHobbies)
-        ? partnerHobbies.slice()
-        : (typeof partnerHobbies === 'string' && partnerHobbies.trim()
-            ? partnerHobbies.split(/[,;|]/).map(h => h.trim()).filter(Boolean)
-            : []),
-      teams: partner && partner.teams ? partner.teams : (partner && partner.contact ? partner.contact : ''),
-      photo: normalizePhotoData(partner && partner.photo ? partner.photo : '')
-    }
-  };
-  const seen = new Set(
-    matchList
-      .map(m => normalizeCode(m && m.partner ? (m.partner.code || m.partner.id || '') : ''))
-      .filter(Boolean)
-  );
-  if(!seen.has(partnerCode)){ matchList.unshift(norm); }
-  renderMatches();
-  const countryUpdated = registerStudentCountry(partnerCode, norm.partner.country || '');
-  const backgroundUpdated = registerStudentBackground(partnerCode, norm.partner.background || '');
-  if(countryUpdated){
-    updateCountryInsights();
-  }
-  if(backgroundUpdated){
-    updateBackgroundInsights();
-  }
-}
-
-function applyServerMatches(serverMatches){
-  if(!Array.isArray(serverMatches)) return;
-  const myCode = normalizeCode(joinCode);
-  const normalized = serverMatches
-    .map(entry => {
-      const partner = entry && entry.partner ? entry.partner : {};
-      const code = normalizeCode(partner.code || partner.id || '');
-      if(!code || (myCode && code === myCode)) return null;
-      const partnerInterests = partner.interests;
-      const partnerHobbies = partner.hobbies;
-      const normalizedPartner = {
-        ...partner,
-        code,
-        gender: partner.gender || '',
-        teams: partner.teams || partner.contact || '',
-        interests: Array.isArray(partnerInterests)
-          ? partnerInterests.slice()
-          : (typeof partnerInterests === 'string' && partnerInterests.trim()
-              ? partnerInterests.split(/[,;|]/).map(t => t.trim()).filter(Boolean)
-              : []),
-        hobbies: Array.isArray(partnerHobbies)
-          ? partnerHobbies.slice()
-          : (typeof partnerHobbies === 'string' && partnerHobbies.trim()
-              ? partnerHobbies.split(/[,;|]/).map(t => t.trim()).filter(Boolean)
-              : [])
-      };
-      const safePhoto = normalizePhotoData(partner.photo || '');
-      if(safePhoto){
-        normalizedPartner.photo = safePhoto;
-      }else{
-        delete normalizedPartner.photo;
-      }
+    function barOption(title, categories, values, color) {
       return {
-        ts: typeof entry.ts === 'number' ? entry.ts : Date.parse(entry.ts) || Date.now(),
-        partner: normalizedPartner
+        animationDuration: 500,
+        grid: { left: 50, right: 24, top: 40, bottom: 40 },
+        tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+        xAxis: { type: 'value' },
+        yAxis: { type: 'category', data: categories, axisLabel: { width: 120, overflow: 'truncate' } },
+        series: [{ type: 'bar', data: values, itemStyle: { color, borderRadius: [0, 8, 8, 0] } }]
       };
-    })
-    .filter(Boolean);
-  const seen = new Set();
-  const deduped = [];
-  normalized.forEach(item => {
-    const code = item.partner.code;
-    if(seen.has(code)) return;
-    seen.add(code);
-    deduped.push(item);
-  });
-  matchList = deduped.sort((a,b)=> (b.ts||0)-(a.ts||0));
-  renderMatches();
-  const partnerProfiles = matchList.map(item => item && item.partner ? item.partner : null);
-  if(registerProfilesCountries(partnerProfiles)){
-    updateCountryInsights();
-  }
-  if(registerProfilesBackgrounds(partnerProfiles)){
-    updateBackgroundInsights();
-  }
-}
-
-async function syncMatchesFromServer(buttons){
-  return runUiTask('syncMatches', buttons, async () => {
-    const code = normalizeCode(joinCode);
-    if(!code) return;
-    const res = await apiGet({ action:'matches', code });
-    if(!res.ok) return;
-    applyServerMatches(res.matches||[]);
-    el('last-sync').textContent = 'Last sync: ' + new Date().toLocaleTimeString();
-  });
-}
-
-/* ==========================
-   UTIL
-========================== */
-function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
-
-/* ==========================
-   WIRE UP
-========================== */
-window.addEventListener('resize', refreshCountryMapSize);
-el('btn-register').addEventListener('click', () => runUiTask('register', ['btn-register','btn-restore'], () => saveProfile()));
-el('btn-restore').addEventListener('click', () => runUiTask('restore', ['btn-register','btn-restore'], () => restore()));
-el('btn-edit-profile').addEventListener('click', openProfileEditor);
-el('btn-logout').addEventListener('click', logout);
-el('btn-left').addEventListener('click', () => runUiTask('swipe', ['btn-left','btn-right'], () => onSwipe('left')));
-el('btn-right').addEventListener('click', () => runUiTask('swipe', ['btn-left','btn-right'], () => onSwipe('right')));
-el('btn-refresh').addEventListener('click', () => syncMatchesFromServer(['btn-refresh']));
-const photoInputControl = el('photo');
-if(photoInputControl){
-  photoInputControl.addEventListener('change', async ()=>{
-    if(!photoInputControl.files || !photoInputControl.files.length){
-      draftPhoto = '';
-      refreshPhotoPreview();
-      setPhotoStatus(meProfile && meProfile.photo ? 'Photo on file.' : '');
-      return;
     }
-    try{
-      await getPhotoDataForSubmit();
-    }catch(e){
-      const msg = e && e.message ? e.message : 'Unable to process photo.';
-      setPhotoStatus(msg, true);
-      draftPhoto = '';
-      refreshPhotoPreview();
-      photoInputControl.value = '';
-    }
-  });
-}
 
-window.addEventListener('load', async ()=>{
-  loadSession();
-  populateProfileFormFromState();
-  if(joinCode){
-    try{
-      const res = await apiGet({ action:'restore', code: joinCode });
-      if(res.ok){
-        meProfile = res.profile||{};
-        applyProfilePhoto(meProfile);
-        draftPhoto = '';
-        refreshPhotoPreview();
-        setPhotoStatus(meProfile && meProfile.photo ? 'Photo restored.' : '');
-        const photoInput = el('photo');
-        if(photoInput){ photoInput.value = ''; }
-        matchList = res.matches||[];
-        registerStudentCountry(joinCode, meProfile && meProfile.country ? meProfile.country : '');
-        registerStudentBackground(joinCode, meProfile && meProfile.background ? meProfile.background : '');
-        const storedMatchProfiles = (matchList||[]).map(m => m && m.partner ? {
-          code: m.partner.code || m.partner.id || '',
-          country: m.partner.country || m.partner.nation || '',
-          background: m.partner.background || m.partner.study || ''
-        } : null);
-        registerProfilesCountries(storedMatchProfiles);
-        registerProfilesBackgrounds(storedMatchProfiles);
-        updateCountryInsights();
-        updateBackgroundInsights();
-        el('me-name').textContent = meProfile.name || '—';
-        el('me-code').textContent = joinCode;
-        hide('screen-profile'); show('screen-swipe');
-        onSwipeScreenVisible();
-        startMatchPolling();
-        renderMatches();
-        await fetchCandidates();
-        await nextCard();
-        return;
+    function renderDashboard(summary) {
+      const totalStudents = summary.totalStudents || 0;
+      const campuses = summary.campuses || [];
+      const countries = summary.countries || [];
+      const programmes = summary.programmes || [];
+
+      ui.totalStudents.textContent = String(totalStudents);
+      ui.totalCampuses.textContent = String(campuses.length);
+      ui.totalCountries.textContent = String(countries.length);
+      ui.refresh.textContent = `Last refresh: ${new Date().toLocaleString()}`;
+
+      charts.map.setOption({
+        tooltip: { trigger: 'item', formatter: params => `${params.name}: ${params.value || 0}` },
+        visualMap: { min: 0, max: Math.max(5, ...countries.map(c => c.count)), show: false, inRange: { color: ['#dbeafe', '#2563eb'] } },
+        series: [{
+          type: 'map',
+          map: 'world',
+          roam: true,
+          emphasis: { label: { show: false } },
+          data: countries.map(item => ({ name: item.name, value: item.count }))
+        }]
+      });
+
+      charts.campus.setOption(barOption('Campuses', campuses.map(c => c.name), campuses.map(c => c.count), '#2563eb'));
+      charts.programme.setOption(barOption('Programmes', programmes.slice(0, 10).map(p => p.name), programmes.slice(0, 10).map(p => p.count), '#7c3aed'));
+    }
+
+    async function refreshDashboard() {
+      const summary = await apiGet('dashboard_summary');
+      renderDashboard(summary);
+    }
+
+    ui.form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      try {
+        ui.saveBtn.disabled = true;
+        const payload = {
+          action: 'register',
+          code: document.getElementById('studentCode').value.trim(),
+          name: document.getElementById('name').value.trim(),
+          campus: document.getElementById('campus').value.trim(),
+          homeCountry: document.getElementById('homeCountry').value.trim(),
+          programme: document.getElementById('programme').value.trim(),
+          email: document.getElementById('email').value.trim(),
+          notes: document.getElementById('notes').value.trim()
+        };
+        const out = await apiPost(payload);
+        setStatus(`Saved ${out.profile.name} (ID: ${out.profile.code}).`);
+        ui.form.reset();
+        await refreshDashboard();
+      } catch (error) {
+        setStatus(error.message, true);
+      } finally {
+        ui.saveBtn.disabled = false;
       }
-    }catch(_e){}
-  }
-  hide('screen-swipe'); show('screen-profile');
-});
+    });
 
-// --- Countries dropdown population (injected) ---
-const COUNTRIES = [
-  "New Zealand","Australia","India","Sri Lanka","Philippines","China","Japan","South Korea","Malaysia",
-  "Singapore","Thailand","Vietnam","Nepal","Pakistan","Bangladesh","United Kingdom","United States",
-  "Canada","Brazil","Germany","France","Italy","Spain","South Africa","Nigeria","Kenya","Fiji","Indonesia","Taiwan","Hong Kong"
-];
+    ui.reloadBtn.addEventListener('click', async () => {
+      try {
+        ui.reloadBtn.disabled = true;
+        await refreshDashboard();
+        setStatus('Dashboard refreshed.');
+      } catch (error) {
+        setStatus(error.message, true);
+      } finally {
+        ui.reloadBtn.disabled = false;
+      }
+    });
 
-function populateCountries(){
-  const sel = document.getElementById('country');
-  if(!sel) return;
-  const existing = Array.from(sel.options).map(o=>o.value);
-  const frag = document.createDocumentFragment();
-  COUNTRIES.forEach(c=>{
-    if(!existing.includes(c)){
-      const o = document.createElement('option');
-      o.value = c; o.textContent = c;
-      frag.appendChild(o);
-    }
-  });
-  sel.appendChild(frag);
-}
+    window.addEventListener('resize', () => {
+      charts.map.resize();
+      charts.campus.resize();
+      charts.programme.resize();
+    });
 
-window.addEventListener('load', populateCountries);
-
-</script>
+    refreshDashboard().catch(err => setStatus(err.message, true));
+  </script>
 </body>
 </html>
-
-
-
