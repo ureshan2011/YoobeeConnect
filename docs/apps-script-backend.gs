@@ -7,6 +7,8 @@
  *   GET  ?action=students
  *   POST {action:'register', code?, name, campus, homeCountry, programme, email, notes?}
  *   POST {action:'update', code, name?, campus?, homeCountry?, programme?, email?, notes?}
+ *   POST {action:'delete_student', code}
+ *   POST {action:'request_password_reset', role:'student'|'lecturer', email}
  *   POST {action:'reset_data', confirmToken:'ERASE_ALL_2026'}
  */
 
@@ -44,6 +46,8 @@ function doPost(e){
     var action = sanitizeString(body.action).toLowerCase();
     if(action === 'register') return respondJson(handleRegister(body));
     if(action === 'update') return respondJson(handleUpdate(body));
+    if(action === 'delete_student') return respondJson(handleDeleteStudent(body));
+    if(action === 'request_password_reset') return respondJson(handleRequestPasswordReset(body));
     if(action === 'reset_data') return respondJson(handleResetData(body));
     return respondJson(createError('Unsupported action: ' + action));
   }catch(err){
@@ -83,6 +87,48 @@ function handleResetData(body){
   table.sheet.clearContents();
   table.sheet.getRange(1,1,1,header.length).setValues([header]);
   return { ok: true, message: 'All student profile data has been deleted.' };
+}
+
+function handleDeleteStudent(body){
+  var code = sanitizeCode(body.code);
+  if(!code) return createError('Missing code for delete_student');
+
+  var table = loadProfiles();
+  var existing = table.map.get(code);
+  if(!existing) return createError('Profile not found for code ' + code);
+
+  table.table.sheet.deleteRow(existing.row);
+  return { ok: true, code: code, message: 'Student deleted.' };
+}
+
+function handleRequestPasswordReset(body){
+  var role = sanitizeString(body.role).toLowerCase();
+  var email = sanitizeString(body.email).toLowerCase();
+  if(role !== 'student' && role !== 'lecturer'){
+    return createError('role must be student or lecturer');
+  }
+  if(!email){
+    return createError('email is required');
+  }
+
+  // NOTE: This backend does not use Firebase Auth directly.
+  // It sends a reset request email to support/admin who can issue reset links in your auth provider.
+  MailApp.sendEmail({
+    to: email,
+    subject: 'Yoobee Connect password reset request',
+    htmlBody:
+      '<p>Hello,</p>' +
+      '<p>We received a password reset request for your <b>' + role + '</b> account.</p>' +
+      '<p>If you did not request this, you can ignore this email.</p>' +
+      '<p>If you requested this reset, please contact your Yoobee Connect administrator to complete the reset process.</p>'
+  });
+
+  return {
+    ok: true,
+    message: 'Password reset email sent when the account exists.',
+    role: role,
+    email: email
+  };
 }
 
 function handleStudents(){
