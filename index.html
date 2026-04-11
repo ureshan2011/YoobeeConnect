@@ -108,6 +108,8 @@
     button:hover { transform: translateY(-1px); }
     button:disabled { opacity: .6; cursor: not-allowed; transform: none; }
     .status { font-size: 13px; margin-top: 8px; min-height: 20px; }
+    .status.error { color: #dc2626; }
+    .status.success { color: #059669; }
     .stats { display:grid; gap: 10px; grid-template-columns: repeat(auto-fit,minmax(120px,1fr)); }
     .stat {
       border: 1px solid var(--border);
@@ -119,6 +121,20 @@
     .chart { width: 100%; height: clamp(240px, 34vh, 380px); }
     .split { display:grid; gap: 12px; grid-template-columns: 1fr; }
     @media (min-width: 780px){ .split { grid-template-columns: 1fr 1fr; } }
+    .toolbar { display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; margin: 12px 0; }
+    .toolbar > div { min-width: 220px; flex: 1; }
+    .table-wrap {
+      max-height: 300px;
+      overflow: auto;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--surface-soft);
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th, td { padding: 10px; border-bottom: 1px solid var(--border); text-align: left; }
+    th { position: sticky; top: 0; background: #eef2ff; z-index: 1; }
+    .danger { border-color: #fecaca; background: #fff1f2; color: #b91c1c; }
+    .stack { display:grid; gap:14px; }
     footer { text-align:center; color: var(--muted); font-size: 12px; }
   </style>
 </head>
@@ -181,6 +197,57 @@
           </div>
           <div id="status" class="status muted"></div>
         </form>
+        <hr style="margin:18px 0;border:none;border-top:1px solid var(--border)">
+        <div class="stack">
+          <div>
+            <h3>Password reset</h3>
+            <p class="muted" style="margin:4px 0 8px">Students and lecturers can request reset links via email.</p>
+            <div class="toolbar">
+              <div>
+                <label for="resetRole">Account role</label>
+                <select id="resetRole">
+                  <option value="student">Student</option>
+                  <option value="lecturer">Lecturer</option>
+                </select>
+              </div>
+              <div>
+                <label for="resetEmail">Account email</label>
+                <input id="resetEmail" type="email" placeholder="name@yoobee.ac.nz" />
+              </div>
+              <button class="btn-secondary" id="resetPasswordBtn" type="button">Send reset email</button>
+            </div>
+            <div id="resetStatus" class="status muted"></div>
+          </div>
+          <div>
+            <h3>Lecturer tools</h3>
+            <p class="muted" style="margin:4px 0 8px">Filter students by course and remove student records when needed.</p>
+            <div class="toolbar">
+              <div>
+                <label for="courseFilter">Filter by course</label>
+                <select id="courseFilter">
+                  <option value="">All courses</option>
+                </select>
+              </div>
+              <button class="btn-secondary" id="reloadStudentsBtn" type="button">Load students</button>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Course</th>
+                    <th>Campus</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="studentsTableBody">
+                  <tr><td colspan="4" class="muted">No students loaded.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div id="lecturerStatus" class="status muted"></div>
+          </div>
+        </div>
       </section>
 
       <section class="panel">
@@ -217,10 +284,18 @@
       saveBtn: document.getElementById('saveBtn'),
       reloadBtn: document.getElementById('reloadBtn'),
       status: document.getElementById('status'),
+      resetStatus: document.getElementById('resetStatus'),
+      lecturerStatus: document.getElementById('lecturerStatus'),
       refresh: document.getElementById('lastRefresh'),
       totalStudents: document.getElementById('totalStudents'),
       totalCampuses: document.getElementById('totalCampuses'),
-      totalCountries: document.getElementById('totalCountries')
+      totalCountries: document.getElementById('totalCountries'),
+      resetRole: document.getElementById('resetRole'),
+      resetEmail: document.getElementById('resetEmail'),
+      resetPasswordBtn: document.getElementById('resetPasswordBtn'),
+      courseFilter: document.getElementById('courseFilter'),
+      reloadStudentsBtn: document.getElementById('reloadStudentsBtn'),
+      studentsTableBody: document.getElementById('studentsTableBody')
     };
 
     const charts = {
@@ -229,9 +304,10 @@
       programme: echarts.init(document.getElementById('programmeChart'))
     };
 
-    function setStatus(message, isError = false) {
-      ui.status.textContent = message;
-      ui.status.style.color = isError ? '#dc2626' : '#059669';
+    function setStatus(message, isError = false, target = ui.status) {
+      target.textContent = message;
+      target.classList.remove('error', 'success');
+      target.classList.add(isError ? 'error' : 'success');
     }
 
     async function apiGet(action) {
@@ -293,6 +369,50 @@
     async function refreshDashboard() {
       const summary = await apiGet('dashboard_summary');
       renderDashboard(summary);
+      return summary;
+    }
+
+    async function refreshStudentsTable() {
+      const selectedCourse = ui.courseFilter.value;
+      const studentsResponse = await apiGet('students');
+      const students = studentsResponse.students || [];
+      const courses = [...new Set(students.map(s => s.programme).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+
+      ui.courseFilter.innerHTML = '<option value="">All courses</option>' + courses.map(course => `<option value="${course}">${course}</option>`).join('');
+      if (selectedCourse && courses.includes(selectedCourse)) {
+        ui.courseFilter.value = selectedCourse;
+      }
+
+      const filteredStudents = ui.courseFilter.value
+        ? students.filter(student => student.programme === ui.courseFilter.value)
+        : students;
+
+      if (!filteredStudents.length) {
+        ui.studentsTableBody.innerHTML = '<tr><td colspan="4" class="muted">No students found for this course.</td></tr>';
+      } else {
+        ui.studentsTableBody.innerHTML = filteredStudents.map(student => `
+          <tr>
+            <td>${student.name || '-'}</td>
+            <td>${student.programme || '-'}</td>
+            <td>${student.campus || '-'}</td>
+            <td><button class="btn-secondary danger" data-delete-code="${student.code}">Delete</button></td>
+          </tr>
+        `).join('');
+      }
+
+      setStatus(`Showing ${filteredStudents.length} student(s).`, false, ui.lecturerStatus);
+    }
+
+    async function requestPasswordReset() {
+      const email = ui.resetEmail.value.trim();
+      const role = ui.resetRole.value;
+      if (!email) {
+        setStatus('Enter the account email first.', true, ui.resetStatus);
+        return;
+      }
+
+      await apiPost({ action: 'request_password_reset', role, email });
+      setStatus(`If ${email} exists as a ${role} account, a reset email has been sent.`, false, ui.resetStatus);
     }
 
     ui.form.addEventListener('submit', async (event) => {
@@ -313,6 +433,7 @@
         setStatus(`Saved ${out.profile.name} (ID: ${out.profile.code}).`);
         ui.form.reset();
         await refreshDashboard();
+        await refreshStudentsTable();
       } catch (error) {
         setStatus(error.message, true);
       } finally {
@@ -324,11 +445,61 @@
       try {
         ui.reloadBtn.disabled = true;
         await refreshDashboard();
+        await refreshStudentsTable();
         setStatus('Dashboard refreshed.');
       } catch (error) {
         setStatus(error.message, true);
       } finally {
         ui.reloadBtn.disabled = false;
+      }
+    });
+
+    ui.resetPasswordBtn.addEventListener('click', async () => {
+      try {
+        ui.resetPasswordBtn.disabled = true;
+        await requestPasswordReset();
+      } catch (error) {
+        setStatus(error.message, true, ui.resetStatus);
+      } finally {
+        ui.resetPasswordBtn.disabled = false;
+      }
+    });
+
+    ui.courseFilter.addEventListener('change', () => {
+      refreshStudentsTable().catch(error => setStatus(error.message, true, ui.lecturerStatus));
+    });
+
+    ui.reloadStudentsBtn.addEventListener('click', async () => {
+      try {
+        ui.reloadStudentsBtn.disabled = true;
+        await refreshStudentsTable();
+      } catch (error) {
+        setStatus(error.message, true, ui.lecturerStatus);
+      } finally {
+        ui.reloadStudentsBtn.disabled = false;
+      }
+    });
+
+    ui.studentsTableBody.addEventListener('click', async (event) => {
+      const button = event.target.closest('button[data-delete-code]');
+      if (!button) return;
+
+      const { deleteCode } = button.dataset;
+      if (!deleteCode) return;
+
+      const ok = window.confirm(`Delete student ${deleteCode}? This cannot be undone.`);
+      if (!ok) return;
+
+      try {
+        button.disabled = true;
+        await apiPost({ action: 'delete_student', code: deleteCode });
+        setStatus(`Deleted student ${deleteCode}.`, false, ui.lecturerStatus);
+        await refreshDashboard();
+        await refreshStudentsTable();
+      } catch (error) {
+        setStatus(error.message, true, ui.lecturerStatus);
+      } finally {
+        button.disabled = false;
       }
     });
 
@@ -338,7 +509,7 @@
       charts.programme.resize();
     });
 
-    refreshDashboard().catch(err => setStatus(err.message, true));
+    Promise.all([refreshDashboard(), refreshStudentsTable()]).catch(err => setStatus(err.message, true));
   </script>
 </body>
 </html>
